@@ -1,6 +1,9 @@
 package template
 
 
+/**
+ * Untuk membuat semua kemungkinan list yang dapat dibentuk dari elemen pada array yg di-init oleh [init].
+ */
 inline fun <reified T> permutate(n: Int, noinline init: (index: Int) -> T): List<Array<T>>{
 /*
     println("============= permutate n= $n START ===========")
@@ -23,7 +26,9 @@ inline fun <reified T> permutate(n: Int, noinline init: (index: Int) -> T): List
 }
 
 /**
- * Untuk membuat semua kemungkinan dari list character pada [list].
+ * Untuk membuat semua kemungkinan list yang dapat dibentuk dari elemen pada [array].
+ * Batasan dari fungsi ini:
+ *   1. Belum dapat menambahkan permutasi bentuk awal.
  */
 fun <T> permutateInner(
     array: Array<T>, itr: Int= 0,
