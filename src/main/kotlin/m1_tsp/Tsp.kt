@@ -91,7 +91,7 @@ fun tsp(distances: Array<Array<Int>>): Pair<Array<Int>, Int>{
             }
         }
     }
-/*
+///*
     println("========== All possible route n= $n =========")
     for((i, route) in computedRoutes.withIndex()){
         val dist= computedDistances[i]
