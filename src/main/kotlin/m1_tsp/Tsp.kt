@@ -30,7 +30,8 @@ fun createDistances(node: Int, range: IntRange= 0 .. 100): Array<Array<Int>> =
                 }
     }
 
-fun tsp(node: Int): Pair<Array<Int>, Int> = tsp(createDistances(node))
+fun tsp(node: Int, distanceRange: IntRange = 1 .. 100): Pair<Array<Int>, Int> =
+    tsp(createDistances(node, distanceRange))
 
 /**
  *  ** Travelling Salesman Problem **
@@ -41,6 +42,10 @@ fun tsp(node: Int): Pair<Array<Int>, Int> = tsp(createDistances(node))
  * Mengambil rute dari [distances] yg memiliki total jarak minimal.
  * [distances] merupakan array 2 dimensi dg ukuran yg sama, contoh: 3x3, 4x4, 5x5.
  * Return Pair dari rute terpendek dan jarak tempuhnya.
+ *
+ * Batasan fungsi ini:
+ *   1. Setiap node yg direpresentasikan oleh tiap jarak pada [distances] harus saling terhubung.
+ *   2. Fungsi ini menggunakan exhaustive comparison.
  */
 fun tsp(distances: Array<Array<Int>>): Pair<Array<Int>, Int>{
     val n= distances.size
@@ -67,12 +72,13 @@ fun tsp(distances: Array<Array<Int>>): Pair<Array<Int>, Int>{
     var minDistance= Int.MAX_VALUE
     var minDistanceIndex= -1
     var itrInd= -1 // Untuk indeks berjalan
-    for(route in allRedundantRoute){
+    route@ for(route in allRedundantRoute){
         var currentNode= 0 // untuk titik awal
         if(route.checkRoute()){
             itrInd++
             var distance= 0
             for(node in route){
+                if(node <= 0) continue@route // Karena jika ada bbrp node yg tak terhubung, itu di luar fungsi ini.
                 distance += distances[currentNode][node] //.also{ println("==== cehck dist= $it") }
                 currentNode= node
             }
@@ -112,4 +118,5 @@ fun namedTsp(distances: Array<Array<Int>>): Pair<Array<String>, Int> = tsp(dista
     Pair(Array(nodeIndex.size){ nodeName[nodeIndex[it]] }, initRes.second)
 }
 
-fun namedTsp(node: Int): Pair<Array<String>, Int> = namedTsp(createDistances(node))
+fun namedTsp(node: Int, distanceRange: IntRange = 1 .. 100): Pair<Array<String>, Int> =
+    namedTsp(createDistances(node, distanceRange))

@@ -9,7 +9,7 @@ class KuliahTest {
     @Test
     fun tspTest(){
 //        tsp(4)
-        val allRoutes= createDistances(6)
+        val allRoutes= createDistances(6, 1 .. 100)
         val (route, distance)= namedTsp(allRoutes)
         println("======= TEST ======")
         println("=== All route ===")
