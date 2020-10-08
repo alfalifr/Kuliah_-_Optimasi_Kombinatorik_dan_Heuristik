@@ -1,4 +1,4 @@
-package travellingalgorithm;
+package m1_tsp; //travellingalgorithm;
 import java.util.Scanner;
 
 /**
