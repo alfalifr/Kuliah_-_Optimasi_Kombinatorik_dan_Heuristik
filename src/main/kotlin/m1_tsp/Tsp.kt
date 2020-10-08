@@ -7,7 +7,7 @@ import template.str
 
 /*
 val distances= ArrayList<Array<Int>>()
-// A   B   C   D
+//                   A   B   C   D
 distances += arrayOf(0, 40, 10, 35) // A
 distances += arrayOf(40, 0, 15, 15) // B
 distances += arrayOf(10, 15, 0, 20) // C
@@ -45,7 +45,7 @@ fun tsp(node: Int, distanceRange: IntRange = 1 .. 100): Pair<Array<Int>, Int> =
  *
  * Batasan fungsi ini:
  *   1. Setiap node yg direpresentasikan oleh tiap jarak pada [distances] harus saling terhubung.
- *   2. Fungsi ini menggunakan exhaustive comparison.
+ *   2. Fungsi ini menggunakan exhaustive comparison dan akan sangat terbebani pada [distances].size == 10.
  */
 fun tsp(distances: Array<Array<Int>>): Pair<Array<Int>, Int>{
     val n= distances.size
