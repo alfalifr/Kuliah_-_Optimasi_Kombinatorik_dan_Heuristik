@@ -12,7 +12,7 @@ class KuliahTest {
     @Test
     fun tspTest(){
 //        tsp(4)
-        val allRoutes= createDistances(10, 1 .. 100)
+        val allRoutes= createDistances(4, 1 .. 100)
         val (route, distance)= namedTsp(allRoutes)
         println("======= TEST ======")
         println("=== All route ===")
@@ -20,6 +20,6 @@ class KuliahTest {
             println("i= $i route= ${allRoute.str()}")
         println("===== Shortest Route =======")
         println("route= ${route.str()} distance= $distance")
-        1 pow 2
+//        1 pow 2
     }
 }
