@@ -7,6 +7,7 @@ import template.str
 
 /*
 val distances= ArrayList<Array<Int>>()
+Jawaban: 75 [a, c, b, d, a]
 //                   A   B   C   D
 distances += arrayOf(0, 40, 10, 35) // A
 distances += arrayOf(40, 0, 15, 15) // B
@@ -21,8 +22,8 @@ distances += arrayOf(35, 15, 20, 0) // D
 // A-D-C-B-A : 0
  */
 
-fun createDistances(node: Int, range: IntRange= 0 .. 100): Array<Array<Int>> =
-    Array(node){ Array(node){ 0 } }.apply {
+fun createDistances(node: Int, range: IntRange= 0 .. 100): Array<IntArray> =
+    Array(node){ IntArray(node) }.apply {
         for(i in indices)
             for(u in i+1 until size)
                 this[i][u]= range.random().also {
@@ -30,8 +31,8 @@ fun createDistances(node: Int, range: IntRange= 0 .. 100): Array<Array<Int>> =
                 }
     }
 
-fun tsp(node: Int, distanceRange: IntRange = 1 .. 100): Pair<Array<Int>, Int> =
-    tsp(createDistances(node, distanceRange))
+fun tsp_exhaustive(node: Int, distanceRange: IntRange = 1 .. 100): Pair<IntArray, Int> =
+    tsp_exhaustive(createDistances(node, distanceRange))
 
 /**
  *  ** Travelling Salesman Problem **
@@ -47,7 +48,7 @@ fun tsp(node: Int, distanceRange: IntRange = 1 .. 100): Pair<Array<Int>, Int> =
  *   1. Setiap node yg direpresentasikan oleh tiap jarak pada [distances] harus saling terhubung.
  *   2. Fungsi ini menggunakan exhaustive comparison dan akan sangat terbebani pada [distances].size == 10.
  */
-fun tsp(distances: Array<Array<Int>>): Pair<Array<Int>, Int>{
+fun tsp_exhaustive(distances: Array<IntArray>, isSymetric: Boolean= true): Pair<IntArray, Int>{
     val n= distances.size
     val travellingNode= n-1
     val allRedundantRoute= permutate(travellingNode){ it +1 }
@@ -74,7 +75,7 @@ fun tsp(distances: Array<Array<Int>>): Pair<Array<Int>, Int>{
     var itrInd= -1 // Untuk indeks berjalan
     route@ for(route in allRedundantRoute){
         var currentNode= 0 // untuk titik awal
-        if(route.checkRoute()){
+        if(route.checkRoute() || !isSymetric){
             itrInd++
             var distance= 0
             for(node in route){
@@ -102,7 +103,7 @@ fun tsp(distances: Array<Array<Int>>): Pair<Array<Int>, Int>{
     val shortestRoute= computedRoutes[minDistanceIndex]
     val rangeOfIndexForComputedRoute= 1 until n
     return Pair(
-        Array(n+1){
+        IntArray(n+1){
             if(it in rangeOfIndexForComputedRoute) shortestRoute[it-1] else 0
         },
         minDistance
@@ -110,12 +111,13 @@ fun tsp(distances: Array<Array<Int>>): Pair<Array<Int>, Int>{
 }
 
 /**
- * Sama dg fungsi [tsp], namun rute yg dihasilkan menggunakan string alfabet.
+ * Sama dg fungsi [tsp_exhaustive], namun rute yg dihasilkan menggunakan string alfabet.
  */
-fun namedTsp(distances: Array<Array<Int>>): Pair<Array<String>, Int> = tsp(distances).let { initRes ->
-    val nodeName= Const.createAbc(distances.size)
+fun namedTsp(distances: Array<IntArray>, nodeNames: Array<String>?= null): Pair<Array<String>, Int> = tsp_exhaustive(distances).let { initRes ->
+    val nodeName= nodeNames ?: Const.createAbc(distances.size)
     val nodeIndex= initRes.first
-    Pair(Array(nodeIndex.size){ nodeName[nodeIndex[it]] }, initRes.second)
+    val nodeCount= distances.size
+    Pair(Array(nodeIndex.size){ nodeName[nodeIndex[it] % nodeCount] }, initRes.second)
 }
 
 fun namedTsp(node: Int, distanceRange: IntRange = 1 .. 100): Pair<Array<String>, Int> =
