@@ -1,6 +1,7 @@
 package m3_sat_tsp
 
 import sidev.lib.number.notNegativeOr
+import template.hamiltomianCycle_withRoute
 import kotlin.math.cos
 
 fun main(){
@@ -9,18 +10,21 @@ fun main(){
 //                   Snell   Planter   Gym   School  Movies
     distances += intArrayOf(0, 3, 5, 2, 3, 4, 8, 9, 9) // Snell
     distances += intArrayOf(4, 0, 8, 6, 7, 2, 5, 6, 6) // Planter
-    distances += intArrayOf(2, 1, 0, 5, 3, 2, 4, 10, 6) // Gym
-    distances += intArrayOf(5, 1, 2, 0, 10, 3, 8, 2, 6) // School
+    distances += intArrayOf(2, 0,/*1*/ 0, 0,/*5*/ 3, 2, 4, 10, 6) // Gym
+    distances += intArrayOf(5, 0,/*1*/ 2, 0, 10, 3, 0,/*8*/ 2, 6) // School
     distances += intArrayOf(1, 2, 10, 11, 0, 3, 9, 6, 3) // Movies
-    distances += intArrayOf(4, 2, 10, 4, 2, 0, 9, 6, 7) // Movies
-    distances += intArrayOf(8, 1, 2, 3, 4, 6, 0, 3, 5) // Movies
-    distances += intArrayOf(1, 2, 3, 4, 5, 6, 1, 0, 5) // Movies
-    distances += intArrayOf(1, 2, 3, 4, 5, 6, 7, 8, 0) // Movies
+    distances += intArrayOf(4, 2, 0,/*10*/ 4, 2, 0, 9, 6, 7) // Movies
+    distances += intArrayOf(8, 1, 2, 3, 4, 6, 0, 3, 0/*5*/) // Movies
+    distances += intArrayOf(1, 2, 3, 4, 0,/*5*/ 6, 1, 0, 5) // Movies
+    distances += intArrayOf(1, 0,/*2*/ 3, 4, 5, 6, 7, 8, 0) // Movies
 
     tsp_NNM_old(distances.toTypedArray())
     println(tsp_NNM(distances.toTypedArray()))
     println(tsp_NNM_withRoute(distances.toTypedArray()).first.joinToString())
     println(tsp_NNM_withRoute_allPossible(distances.toTypedArray()).also { println(it.first.joinToString()) })
+
+    println("====== hamiltonian cycle ===========")
+    println(hamiltomianCycle_withRoute(distances.toTypedArray()).also { println(it.first.joinToString()) })
 }
 
 /**
@@ -76,9 +80,16 @@ fun tsp_NNM_old(distances: Array<IntArray>): Pair<IntArray, Int>
 }
 
 
+/**
+ * Travelling Salesman Problem - Nearest Neighbor Method
+ *
+ * Fungsi ini hanya mencari dari startingIndex [start].
+ * Return Pair dari jarak tempuh dari rute terpendek.
+ */
 fun tsp_NNM(
     graph: Array<IntArray>,
     isVisited: BooleanArray?= null,
+    start: Int= 0,
     currentPos: Int= 0,
     nodeItr: Int= 1, nodeItrLimit: Int= graph.size,
     cost: Int= 0,
@@ -89,7 +100,7 @@ fun tsp_NNM(
 //    val route= (route ?: IntArray(nodeItrLimit +1)).also { it[nodeItr-1]= currentPos }
 
     if(nodeItr == nodeItrLimit)
-        return cost + graph[currentPos][0]
+        return cost + graph[currentPos][start]
 
     var nearestNeighbor= Int.MAX_VALUE
     var nearestNeighborInd= -1
@@ -100,18 +111,30 @@ fun tsp_NNM(
         }
     }
     println("tsp_NNM currentPos= $currentPos nearestNeighborInd= $nearestNeighborInd nearestNeighbor= $nearestNeighbor")
-    if(nearestNeighborInd >= 0)
+    if(nearestNeighborInd >= 0){
         isVisited[nearestNeighborInd]= true
+        // Rekursif ke nodeItr selanjutnya dilakukan jika nearestNeighborInd lebih dari -1.
+        // Artinya, bahwa itr skrg tersambung setidaknya ke 1 node lain.
+        cost= tsp_NNM(graph, isVisited, start, nearestNeighborInd, nodeItr +1, nodeItrLimit, cost + nearestNeighbor)
+    }
 
-    cost= tsp_NNM(graph, isVisited, nearestNeighborInd, nodeItr +1, nodeItrLimit, cost + nearestNeighbor)
     //Jika ada yg blum di-visit, maka lakukan backtracking dg mengulangi `currentPos` dan memberi tanda `nearestNeighborInd` sbg index yg melakukan backtracking.
-    if(isVisited.find { !it } != null)
-        cost= tsp_NNM(graph, isVisited, currentPos, nodeItr, nodeItrLimit, cost, nearestNeighborInd)
+    // Namun, backtrack dilakukan jika `nearestNeighborInd` lebih dari -1, artinya bahwa masih terdapat rute yang terbuka
+    // untuk dieksplor.
+    if(nearestNeighborInd >= 0 && isVisited.find { !it } != null)
+        cost= tsp_NNM(graph, isVisited, start, currentPos, nodeItr, nodeItrLimit, cost, nearestNeighborInd)
 
     println("tsp_NNM end= $cost")
     return cost
 }
 
+
+/**
+ * Travelling Salesman Problem - Nearest Neighbor Method
+ *
+ * Fungsi ini hanya mencari pada tiap node yang ada di dalam [graph] sebagai startingIndex.
+ * Return Pair dari rute terpendek dan jarak tempuhnya.
+ */
 fun tsp_NNM_withRoute_allPossible(
     graph: Array<IntArray>
 ): Pair<IntArray, Int> {
@@ -119,7 +142,7 @@ fun tsp_NNM_withRoute_allPossible(
     var minDist= Int.MAX_VALUE
     for(i in graph.indices)
         tsp_NNM_withRoute(graph, currentPos = i).also {
-            if(minDist > it.second){
+            if(minDist > it.second && it.first.last() >= 0){
                 minDist= it.second
                 minPair= it
             }
@@ -127,6 +150,13 @@ fun tsp_NNM_withRoute_allPossible(
     return minPair
 }
 
+
+/**
+ * Travelling Salesman Problem - Nearest Neighbor Method
+ *
+ * Fungsi ini hanya mencari dari startingIndex [start].
+ * Return Pair dari rute terpendek dan jarak tempuhnya.
+ */
 fun tsp_NNM_withRoute(
     graph: Array<IntArray>,
     isVisited: BooleanArray?= null,
@@ -143,7 +173,7 @@ fun tsp_NNM_withRoute(
     if(nodeItr == nodeItrLimit)
         return Pair(
             route.also { it[it.lastIndex]= it.first() },
-            cost + if(currentPos >= 0) graph[currentPos][route.first().notNegativeOr(0)] else cost
+            cost + if(currentPos >= 0) graph[currentPos][route.first().notNegativeOr(0)] else 0
         )
 
     var nearestNeighbor= Int.MAX_VALUE
@@ -155,23 +185,27 @@ fun tsp_NNM_withRoute(
         }
     }
     println("tsp_NNM currentPos= $currentPos nearestNeighborInd= $nearestNeighborInd nearestNeighbor= $nearestNeighbor")
-    if(nearestNeighborInd >= 0)
+    if(nearestNeighborInd >= 0){
         isVisited[nearestNeighborInd]= true
-
-    tsp_NNM_withRoute(graph, isVisited, nearestNeighborInd, nodeItr +1, nodeItrLimit, cost + nearestNeighbor, route)
-        .also { (r, dist) ->
-            cost= dist
-            route= r
-        }
+        // Rekursif ke nodeItr selanjutnya dilakukan jika nearestNeighborInd lebih dari -1.
+        // Artinya, bahwa itr skrg tersambung setidaknya ke 1 node lain.
+        tsp_NNM_withRoute(graph, isVisited, nearestNeighborInd, nodeItr +1, nodeItrLimit, cost + nearestNeighbor, route)
+                .also { (r, dist) ->
+                    cost= dist
+                    route= r
+                }
+    }
 
     //Jika ada yg blum di-visit, maka lakukan backtracking dg mengulangi `currentPos` dan memberi tanda `nearestNeighborInd` sbg index yg melakukan backtracking.
-    if(isVisited.find { !it } != null)
+    // Namun, backtrack dilakukan jika `nearestNeighborInd` lebih dari -1, artinya bahwa masih terdapat rute yang terbuka
+    // untuk dieksplor.
+    if(nearestNeighborInd >= 0 && isVisited.find { !it } != null)
         tsp_NNM_withRoute(graph, isVisited, currentPos, nodeItr, nodeItrLimit, cost, route, nearestNeighborInd)
             .also { (r, dist) ->
                 cost= dist
                 route= r
             }
 
-    println("tsp_NNM end= $cost")
+    println("tsp_NNM end route= ${route.joinToString()} cost= $cost")
     return Pair(route, cost)
 }
