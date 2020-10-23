@@ -1,5 +1,6 @@
 package m3_sat_tsp
 
+import m1_tsp.createDistances
 import sidev.lib.number.notNegativeOr
 import template.hamiltomianCycle_withRoute
 import kotlin.math.cos
@@ -8,6 +9,7 @@ fun main(){
 
     val distances= ArrayList<IntArray>()
 //                   Snell   Planter   Gym   School  Movies
+/*
     distances += intArrayOf(0, 3, 5, 2, 3, 4, 8, 9, 9) // Snell
     distances += intArrayOf(4, 0, 8, 6, 7, 2, 5, 6, 6) // Planter
     distances += intArrayOf(2, 0,/*1*/ 0, 0,/*5*/ 3, 2, 4, 10, 6) // Gym
@@ -17,14 +19,28 @@ fun main(){
     distances += intArrayOf(8, 1, 2, 3, 4, 6, 0, 3, 0/*5*/) // Movies
     distances += intArrayOf(1, 2, 3, 4, 0,/*5*/ 6, 1, 0, 5) // Movies
     distances += intArrayOf(1, 0,/*2*/ 3, 4, 5, 6, 7, 8, 0) // Movies
+*/
 
-    tsp_NNM_old(distances.toTypedArray())
-    println(tsp_NNM(distances.toTypedArray()))
-    println(tsp_NNM_withRoute(distances.toTypedArray()).first.joinToString())
-    println(tsp_NNM_withRoute_allPossible(distances.toTypedArray()).also { println(it.first.joinToString()) })
+    distances += intArrayOf(0, 3, 5, 2, 3, 4, 8, 9, 9) // Snell
+    distances += intArrayOf(4, 0, 8, 6, 7, 2, 5, 6, 6) // Planter
+    distances += intArrayOf(2, 1, 0, 5, 3, 2, 4, 10, 6) // Gym
+    distances += intArrayOf(5, 1, 2, 0, 10, 3, 8, 2, 6) // School
+    distances += intArrayOf(1, 2, 10, 11, 0, 3, 9, 6, 3) // Movies
+    distances += intArrayOf(4, 2, 10, 4, 2, 0, 9, 6, 7) // Movies
+    distances += intArrayOf(8, 1, 2, 3, 4, 6, 0, 3, 5) // Movies
+    distances += intArrayOf(1, 2, 3, 4, 5, 6, 1, 0, 5) // Movies
+    distances += intArrayOf(1, 2, 3, 4, 5, 6, 7, 8, 0) // Movies
 
-    println("====== hamiltonian cycle ===========")
-    println(hamiltomianCycle_withRoute(distances.toTypedArray()).also { println(it.first.joinToString()) })
+    val distArr= createDistances(14) //distances.toTypedArray() //
+
+//    tsp_NNM_old(distances.toTypedArray())
+//    println(tsp_NNM(distances.toTypedArray()))
+//    println(tsp_NNM_withRoute(distances.toTypedArray()).first.joinToString())
+    println("====== hamiltonian cycle - NNM ===========")
+    println(tsp_NNM_withRoute_allPossible(distArr).also { println(it.first.joinToString()) })
+
+    println("====== hamiltonian cycle - exhaustive ===========")
+    println(hamiltomianCycle_withRoute(distArr).also { println(it.first.joinToString()) })
 }
 
 /**
