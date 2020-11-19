@@ -1,4 +1,4 @@
-import m1_tsp.tsp_exhaustive
+import m1_tsp.*
 import m2_binPacking.*
 import m3_sat_tsp.tsp_NNM_withRoute_allPossible
 import org.junit.Test
@@ -45,7 +45,8 @@ class UTS {
     @Test
     fun utsBinPackingTest(){
         val contents= arrayOf(20,30,40,100,60,20,25,40,30,10)
-        val bins_nf= binPacking_nextFit(contents, 40)
+        val maxCap= 40
+        val bins_nf= binPacking_nextFit(contents, maxCap)
 
         prin("=================== BP - NextFit ===================")
         bins_nf.forEachIndexed { i, bin ->
@@ -53,7 +54,7 @@ class UTS {
         }
         prin("Sisa total= ${bins_nf.cumulativeRemCap()}")
 
-        val bins_ff= binPacking_firstFit(contents, 40)
+        val bins_ff= binPacking_firstFit(contents, maxCap)
 
         prin("=================== BP - FirstFit ===================")
         bins_ff.forEachIndexed { i, bin ->
@@ -61,7 +62,7 @@ class UTS {
         }
         prin("Sisa total= ${bins_ff.cumulativeRemCap()}")
 
-        val bins_bf= binPacking_bestFit(contents, 40)
+        val bins_bf= binPacking_bestFit(contents, maxCap)
 
         prin("=================== BP - BestFit ===================")
         bins_bf.forEachIndexed { i, bin ->
@@ -69,7 +70,7 @@ class UTS {
         }
         prin("Sisa total= ${bins_bf.cumulativeRemCap()}")
 
-        val bins_ffd= binPacking_firstFitDecreasing(contents, 40)
+        val bins_ffd= binPacking_firstFitDecreasing(contents, maxCap)
 
         prin("=================== BP - FirstFitDecreasing ===================")
         bins_ffd.forEachIndexed { i, bin ->
@@ -77,12 +78,42 @@ class UTS {
         }
         prin("Sisa total= ${bins_ffd.cumulativeRemCap()}")
 
-        val bins_bfd= binPacking_bestFitDecreasing(contents, 40)
+        val bins_bfd= binPacking_bestFitDecreasing(contents, maxCap)
 
         prin("=================== BP - BestFitDecreasing ===================")
         bins_bfd.forEachIndexed { i, bin ->
             prin("i= $i bin= $bin")
         }
         prin("Sisa total= ${bins_bfd.cumulativeRemCap()}")
+    }
+
+    @Test
+    fun utsTravelCost(){
+        val dests= mutableListOf<TravelDest>()
+        val budget= 1_500
+        dests += TravelDest(50, 200)
+        dests += TravelDest(100, 500)
+        dests += TravelDest(80, 300)
+        dests += TravelDest(200, 800)
+        dests += TravelDest(800, 900)
+        dests += TravelDest(100, 300)
+        dests += TravelDest(200, 400)
+        dests += TravelDest(350, 600)
+
+        val dest_n= travelWithCost_firstCome(dests, budget)
+        prin("============ FirstCome =================")
+        prin("dest= ${dest_n.first} score= ${dest_n.second}")
+
+        val dest_hsf= travelWithCost_highestScoreFirst(dests, budget)
+        prin("============ HiegehstScoreFirst =================")
+        prin("dest= ${dest_hsf.first} score= ${dest_hsf.second}")
+
+        val dest_lsf= travelWithCost_leastScoreFirst(dests, budget)
+        prin("============ LeastScoreFirst =================")
+        prin("dest= ${dest_lsf.first} score= ${dest_lsf.second}")
+
+        val dest_hsrf= travelWithCost_highestScoreCostRatioFirst(dests, budget)
+        prin("============ HighestScoreRationFirst =================")
+        prin("dest= ${dest_hsrf.first} score= ${dest_hsrf.second}")
     }
 }
