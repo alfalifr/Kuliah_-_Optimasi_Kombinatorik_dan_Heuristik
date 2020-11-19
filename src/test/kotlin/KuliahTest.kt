@@ -1,8 +1,10 @@
 import m1_tsp.createDistances
 import m1_tsp.namedTsp
+import m2_binPacking.*
 import m3_sat_tsp.tsp_NNM_withRoute_allPossible
 //import m1_tsp.tsp
 import org.junit.Test
+import sidev.lib.console.prin
 import template.hamiltomianCycle_withRoute
 import template.str
 import template.toLetterArray
@@ -98,5 +100,49 @@ class KuliahTest {
         println("distance= $distance")
 //        println("distance= $distance")
 //        1 pow 2
+    }
+
+    @Test
+    fun binPackingTest(){
+        val contents= arrayOf(5,7,5,2,4,2,5,1,6)
+        val bins_nf= binPacking_nextFit(contents, 10)
+
+        prin("=================== BP - NextFit ===================")
+        bins_nf.forEachIndexed { i, bin ->
+            prin("i= $i bin= $bin")
+        }
+        prin("Sisa total= ${bins_nf.cumulativeRemCap()}")
+
+        val bins_ff= binPacking_firstFit(contents, 10)
+
+        prin("=================== BP - FirstFit ===================")
+        bins_ff.forEachIndexed { i, bin ->
+            prin("i= $i bin= $bin")
+        }
+        prin("Sisa total= ${bins_ff.cumulativeRemCap()}")
+
+        val bins_bf= binPacking_bestFit(contents, 10)
+
+        prin("=================== BP - BestFit ===================")
+        bins_bf.forEachIndexed { i, bin ->
+            prin("i= $i bin= $bin")
+        }
+        prin("Sisa total= ${bins_bf.cumulativeRemCap()}")
+
+        val bins_ffd= binPacking_firstFitDecreasing(contents, 10)
+
+        prin("=================== BP - FirstFitDecreasing ===================")
+        bins_ffd.forEachIndexed { i, bin ->
+            prin("i= $i bin= $bin")
+        }
+        prin("Sisa total= ${bins_ffd.cumulativeRemCap()}")
+
+        val bins_bfd= binPacking_bestFitDecreasing(contents, 10)
+
+        prin("=================== BP - BestFitDecreasing ===================")
+        bins_bfd.forEachIndexed { i, bin ->
+            prin("i= $i bin= $bin")
+        }
+        prin("Sisa total= ${bins_bfd.cumulativeRemCap()}")
     }
 }

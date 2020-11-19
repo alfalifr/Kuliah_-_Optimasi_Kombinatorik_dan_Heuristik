@@ -17,6 +17,6 @@ dependencies {
     implementation(kotlin("stdlib"))
     testCompile("junit", "junit", "4.12")
 
-    implementation("sidev.lib.kotlin.multi:StdLib-jvm:0.0.1x")
-    implementation("sidev.lib.kotlin.multi:Math-jvm:0.0.1x")
+    implementation("sidev.lib.kotlin:KtStdLib-jvm:0.0.1x.11112020")
+    implementation("sidev.lib.kotlin:KtMath-jvm:0.0.1x")
 }

@@ -1,6 +1,7 @@
 package m3_sat_tsp
 
 import m1_tsp.createDistances
+import sidev.lib.console.prine
 import sidev.lib.number.notNegativeOr
 import template.hamiltomianCycle_withRoute
 import kotlin.math.cos
@@ -158,6 +159,7 @@ fun tsp_NNM_withRoute_allPossible(
     var minDist= Int.MAX_VALUE
     for(i in graph.indices)
         tsp_NNM_withRoute(graph, currentPos = i).also {
+            prine("route= ${it.first.joinToString{ (it +1).toString() }} distance= ${it.second}")
             if(minDist > it.second && it.first.last() >= 0){
                 minDist= it.second
                 minPair= it
