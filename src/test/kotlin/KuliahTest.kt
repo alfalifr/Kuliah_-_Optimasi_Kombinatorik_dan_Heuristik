@@ -145,4 +145,9 @@ class KuliahTest {
         }
         prin("Sisa total= ${bins_bfd.cumulativeRemCap()}")
     }
+
+    @Test
+    fun cobTest(){
+        prin("-1 % 10 = ${-1 % 10}")
+    }
 }

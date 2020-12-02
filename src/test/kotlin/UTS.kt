@@ -44,9 +44,12 @@ class UTS {
 
     @Test
     fun utsBinPackingTest(){
+        val preprocess= true
         val contents= arrayOf(20,30,40,100,60,20,25,40,30,10)
         val maxCap= 40
-        val bins_nf= binPacking_nextFit(contents, maxCap)
+        val bins_nf= binPacking_nextFit(contents, maxCap, preprocess)
+
+        prin("preprocess= $preprocess")
 
         prin("=================== BP - NextFit ===================")
         bins_nf.forEachIndexed { i, bin ->
@@ -54,7 +57,7 @@ class UTS {
         }
         prin("Sisa total= ${bins_nf.cumulativeRemCap()}")
 
-        val bins_ff= binPacking_firstFit(contents, maxCap)
+        val bins_ff= binPacking_firstFit(contents, maxCap, preprocess)
 
         prin("=================== BP - FirstFit ===================")
         bins_ff.forEachIndexed { i, bin ->
@@ -62,7 +65,7 @@ class UTS {
         }
         prin("Sisa total= ${bins_ff.cumulativeRemCap()}")
 
-        val bins_bf= binPacking_bestFit(contents, maxCap)
+        val bins_bf= binPacking_bestFit(contents, maxCap, preprocess)
 
         prin("=================== BP - BestFit ===================")
         bins_bf.forEachIndexed { i, bin ->
@@ -70,7 +73,7 @@ class UTS {
         }
         prin("Sisa total= ${bins_bf.cumulativeRemCap()}")
 
-        val bins_ffd= binPacking_firstFitDecreasing(contents, maxCap)
+        val bins_ffd= binPacking_firstFitDecreasing(contents, maxCap, preprocess)
 
         prin("=================== BP - FirstFitDecreasing ===================")
         bins_ffd.forEachIndexed { i, bin ->
@@ -78,7 +81,7 @@ class UTS {
         }
         prin("Sisa total= ${bins_ffd.cumulativeRemCap()}")
 
-        val bins_bfd= binPacking_bestFitDecreasing(contents, maxCap)
+        val bins_bfd= binPacking_bestFitDecreasing(contents, maxCap, preprocess)
 
         prin("=================== BP - BestFitDecreasing ===================")
         bins_bfd.forEachIndexed { i, bin ->

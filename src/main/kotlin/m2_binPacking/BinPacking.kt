@@ -1,7 +1,29 @@
 package m2_binPacking
 
+import `val`.TaggedInt
 
-fun binPacking_nextFit(costs: Array<Int>, maxCap: Int): List<Bin> {
+/**
+ * Memecah elemen pada [costs] yang memiliki kapasitas di atas [maxCap].
+ */
+fun binPacking_preprocess(costs: Array<Int>, maxCap: Int): Array<Int> {
+    val list= mutableListOf<Int>()
+
+    for(cost in costs){
+        if(cost <= maxCap) {
+            list += cost
+        } else {
+            var reducedCost= cost
+            while(reducedCost > 0) {
+                list += reducedCost
+                reducedCost -= maxCap
+            }
+        }
+    }
+    return list.toTypedArray()
+}
+
+fun binPacking_nextFit(costs: Array<Int>, maxCap: Int, doPreprocess: Boolean = true): List<Bin> {
+    val costs= if(doPreprocess) binPacking_preprocess(costs, maxCap) else costs
     val bins= mutableListOf<Bin>()
     var bin= Bin(mutableListOf(), maxCap)
 
@@ -21,7 +43,8 @@ fun binPacking_nextFit(costs: Array<Int>, maxCap: Int): List<Bin> {
     return bins
 }
 
-fun binPacking_firstFit(costs: Array<Int>, maxCap: Int): List<Bin> {
+fun binPacking_firstFit(costs: Array<Int>, maxCap: Int, doPreprocess: Boolean = true): List<Bin> {
+    val costs= if(doPreprocess) binPacking_preprocess(costs, maxCap) else costs
     val bins= mutableListOf<Bin>()
 
     for(cost in costs){
@@ -47,12 +70,13 @@ fun binPacking_firstFit(costs: Array<Int>, maxCap: Int): List<Bin> {
 
     return bins
 }
-fun binPacking_firstFitDecreasing(costs: Array<Int>, maxCap: Int): List<Bin> =
-    binPacking_firstFit(costs.sortedArrayDescending(), maxCap)
+fun binPacking_firstFitDecreasing(costs: Array<Int>, maxCap: Int, doPreprocess: Boolean = true): List<Bin> =
+    binPacking_firstFit(costs.sortedArrayDescending(), maxCap, doPreprocess)
 
 
-fun binPacking_bestFit(costs: Array<Int>, maxCap: Int): List<Bin> {
+fun binPacking_bestFit(costs: Array<Int>, maxCap: Int, doPreprocess: Boolean = true): List<Bin> {
 //    val costs= costs.sortedArray()
+    val costs= if(doPreprocess) binPacking_preprocess(costs, maxCap) else costs
     val bins= mutableListOf<Bin>()
 
     for(cost in costs){
@@ -80,8 +104,8 @@ fun binPacking_bestFit(costs: Array<Int>, maxCap: Int): List<Bin> {
 
     return bins
 }
-fun binPacking_bestFitDecreasing(costs: Array<Int>, maxCap: Int): List<Bin> =
-    binPacking_bestFit(costs.sortedArrayDescending(), maxCap)
+fun binPacking_bestFitDecreasing(costs: Array<Int>, maxCap: Int, doPreprocess: Boolean = true): List<Bin> =
+    binPacking_bestFit(costs.sortedArrayDescending(), maxCap, doPreprocess)
 
 
 fun List<Bin>.cumulativeRemCap(): Int = scan(0) { acc, bin -> acc + bin.remCap }.last()
