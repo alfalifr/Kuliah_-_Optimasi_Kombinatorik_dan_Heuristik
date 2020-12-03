@@ -46,6 +46,28 @@ data class Schedule(val assignments: MutableMap<Timeslot, MutableList<Course>> =
         }
     }
 
+    operator fun iterator(): Iterator<Pair<Course, Timeslot>> = object: Iterator<Pair<Course, Timeslot>> {
+        val mapItr= assignments.iterator()
+        var currEntry: Map.Entry<Timeslot, List<Course>>?= if(mapItr.hasNext()) mapItr.next() else null
+        var currCourseIndex: Int = 0
+
+        val currTimeslot: Timeslot
+            get()= currEntry!!.key
+        val currCourses: List<Course>
+            get()= currEntry!!.value
+
+        override fun hasNext(): Boolean {
+            if(currEntry == null) return false
+            if(currCourseIndex >= currCourses.size){
+                if(!mapItr.hasNext()) return false
+                currEntry= mapItr.next()
+                currCourseIndex= 0
+            }
+            return true
+        }
+        override fun next(): Pair<Course, Timeslot> = currCourses[currCourseIndex++] to currTimeslot
+    }
+
     override fun toString(): String = assignments.joinToString("\n") { "${it.key}: ${it.value}" }
 }
 

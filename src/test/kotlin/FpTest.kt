@@ -1,4 +1,6 @@
 import fp.Algo
+import fp.Config.DATASET_DIR
+import fp.Config.SOLUTION_DIR
 import fp.Course
 import fp.Student
 import fp.Util
@@ -6,6 +8,8 @@ import org.junit.Test
 import sidev.lib.collection.copy
 import sidev.lib.collection.forEachIndexed
 import sidev.lib.console.prin
+import sidev.lib.jvm.tool.util.FileUtil
+import java.io.File
 
 class FpTest {
     @Test
@@ -79,5 +83,85 @@ class FpTest {
         prin(penalty2)
         prin(penalty3)
         prin(penalty4)
+    }
+
+    @Test
+    fun realAssignmentTest(){
+        val folderDir= "D:\\DataCloud\\OneDrive\\OneDrive - Institut Teknologi Sepuluh Nopember\\Kuliah\\SMT 7\\OKH-A\\M10\\OKH - Dataset - Toronto"
+        val courseDir= "$folderDir\\car-f-92.crs"
+        val studentDir= "$folderDir\\car-f-92.stu"
+
+        val students= Util.readStudent(studentDir)
+        val courses= Util.toListOfCourses(Util.readCourse(courseDir))
+
+        prin(students.size)
+        prin(courses.size)
+
+        val adjacencyMatrix= Util.createCourseAdjacencyMatrix_Raw(courses.size, students)
+//        val adjacencyMatrix= Util.createCourseAdjacencyMatrix_Raw(courses.size, students)
+
+        val sc1= Algo.assignToTimeslot(courses, adjacencyMatrix)
+        val penalty= Util.getPenalty(sc1, adjacencyMatrix, students.size)
+
+        prin(sc1)
+        prin(penalty)
+    }
+
+    @Test
+    fun realAssignmentTest_2(){
+//        val folderDir= "D:\\DataCloud\\OneDrive\\OneDrive - Institut Teknologi Sepuluh Nopember\\Kuliah\\SMT 7\\OKH-A\\M10\\OKH - Dataset - Toronto"
+        val courseDir= "$DATASET_DIR\\pur-s-93.crs" //\\car-f-92.crs"
+        val studentDir= "$DATASET_DIR\\pur-s-93.stu" //\\car-f-92.stu"
+//        val solDir= "$SOLUTION_DIR\\car-f-92.sol"
+//        val solFile= File(solDir)
+
+        val students= Util.readStudent(studentDir)
+        val courses= Util.toListOfCourses(Util.readCourse(courseDir))
+
+        prin("students.size= ${students.size}")
+        prin("courses.size= ${courses.size}")
+
+        val adjacencyMatrix= Util.createCourseAdjacencyMatrix_Raw(courses.size, students)
+        val density= Util.getDensity(adjacencyMatrix)
+
+        prin("density= $density")
+
+        val degreeList= Util.getDegreeList(adjacencyMatrix)
+        degreeList.forEachIndexed { i, degree ->
+            courses[i].degree= degree
+        }
+
+//        val adjacencyMatrix= Util.createCourseAdjacencyMatrix_Raw(courses.size, students)
+
+        val sc1= Algo.assignToTimeslot(courses, adjacencyMatrix)
+        val sc2= Algo.largestDegreeFirst(courses, adjacencyMatrix)
+        val sc3= Algo.largestStudentCountFirst(courses, adjacencyMatrix)
+        val penalty1= Util.getPenalty(sc1, adjacencyMatrix, students.size)
+        val penalty2= Util.getPenalty(sc2, adjacencyMatrix, students.size)
+        val penalty3= Util.getPenalty(sc3, adjacencyMatrix, students.size)
+
+        prin("\n\n ============ First Order =============== \n")
+        prin("Time table:")
+        prin(sc1)
+        prin("Penalty: $penalty1")
+
+        prin("\n\n ============ Largest Degree First =============== \n")
+        prin("Time table:")
+        prin(sc2)
+        prin("Penalty: $penalty2")
+
+        prin("\n\n ============ Largest Student Count First =============== \n")
+        prin("Time table:")
+        prin(sc3)
+        prin("Penalty: $penalty3")
+/*
+        for((course, timeslot) in sc1){
+            FileUtil.saveln(
+                FileUtil.getAvailableFile(solFile),
+                "${course.id} ${timeslot.no}",
+                true
+            )
+        }
+ */
     }
 }

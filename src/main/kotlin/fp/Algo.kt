@@ -1,5 +1,7 @@
 package fp
 
+import fp.Config.COURSE_INDEX_OFFSET
+
 object Algo {
     /**
      * [courses] merupakan List dg isi [Course.degree] yang udah diisikan.
@@ -56,7 +58,7 @@ object Algo {
                     if(assignedCourses != null){
                         var isConflicting= false
                         c2@ for(c2 in assignedCourses){
-                            if(adjacencyMatrix[c1.id][c2.id] > 0){
+                            if(adjacencyMatrix[c1.id - COURSE_INDEX_OFFSET][c2.id - COURSE_INDEX_OFFSET] > 0){
                                 isConflicting= true
                                 break@c2
                             }
@@ -73,6 +75,8 @@ object Algo {
                         break@t1
                     }
                 }
+                //Jika [availableTimeslot] == `null`, artinya tidak ada batas jml timeslot,
+                // maka buat timeslot baru.
                 if(!alreadyAssigned){
                     val newT= Timeslot(timeslots.size +1)
                     timeslots += newT

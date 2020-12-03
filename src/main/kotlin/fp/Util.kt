@@ -1,6 +1,8 @@
 package fp
 
 import fp.Config.COURSE_INDEX_OFFSET
+import sidev.lib.collection.array.forEachIndexed
+import sidev.lib.console.prine
 import sidev.lib.number.pow
 import java.io.File
 import java.lang.IllegalArgumentException
@@ -33,15 +35,20 @@ object Util {
      */
     fun readIntTableFromFile(dir: String, extension: String, delimiter: String = " "): List<List<Int>> {
         val file= File(dir)
+        prine("readFile() file= $file file.exists()= ${file.exists()} file.extension= ${file.extension}")
         if(!file.exists() || file.extension != extension.removePrefix("."))
             throw IllegalArgumentException()
 
         val res= mutableListOf<List<Int>>()
-        val inn= Scanner(System.`in`)
+        val inn= Scanner(file)
 
         while(inn.hasNextLine()){
             val line= inn.nextLine()
-            res += line.split(delimiter).map { it.toInt() }
+//            prine("readFile() line= '$line'")
+            if(line.isNotBlank())
+                res += line.trimEnd().split(delimiter)
+//                    .also { prine("readFile() line.split= '$it'") }
+                    .map { it.toInt() }
         }
         return res
     }
@@ -156,9 +163,9 @@ object Util {
         var sum= 0.0
         val weightRange= 1.0 .. 5.0
         for((i, row) in courseAdjacencyMatrix.withIndex()){
-            val t1= schedule.getCourseTimeslot(i)!!
+            val t1= schedule.getCourseTimeslot(i + COURSE_INDEX_OFFSET)!!
             for(u in i+1 until row.size){
-                val t2= schedule.getCourseTimeslot(u)!!
+                val t2= schedule.getCourseTimeslot(u + COURSE_INDEX_OFFSET)!!
                 val conflict= courseAdjacencyMatrix[i][u].toDouble()
                 val timeslotDistance= (t1.no - t2.no).absoluteValue.toDouble()
 
@@ -170,5 +177,16 @@ object Util {
             }
         }
         return sum / studentCount
+    }
+
+    fun getDensity(courseAdjacencyMatrix: Array<IntArray>): Double {
+        var conflicts= 0
+        courseAdjacencyMatrix.forEachIndexed { i, row ->
+            row.forEachIndexed { u, arc ->
+                if(arc > 0)
+                    conflicts++
+            }
+        }
+        return conflicts / (courseAdjacencyMatrix.size pow 2).toDouble()
     }
 }
