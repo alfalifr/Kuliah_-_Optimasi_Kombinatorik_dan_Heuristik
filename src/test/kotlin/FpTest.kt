@@ -4,14 +4,11 @@ import fp.Config.FILE_EXTENSION_COURSE
 import fp.Config.FILE_EXTENSION_RES
 import fp.Config.FILE_EXTENSION_SOLUTION
 import fp.Config.FILE_EXTENSION_STUDENT
-import fp.Config.SOLUTION_DIR
 import org.junit.Test
 import sidev.lib.collection.copy
 import sidev.lib.collection.forEachIndexed
 import sidev.lib.console.prin
-import sidev.lib.jvm.tool.util.FileUtil
 import java.io.File
-import java.util.*
 
 class FpTest {
     @Test
@@ -69,7 +66,7 @@ class FpTest {
         val sc1= Algo.assignToTimeslot(courses, adjacencyMatrix1)
         val sc2= Algo.assignToTimeslot(courses, adjacencyMatrix2)
         val scLDF= Algo.largestDegreeFirst(coursesWithDegree, adjacencyMatrix2)
-        val scLSCF= Algo.largestStudentCountFirst(courses, adjacencyMatrix2)
+        val scLSCF= Algo.largestEnrollmentFirst(courses, adjacencyMatrix2)
 
         prin(sc1)
         prin(sc2)
@@ -160,7 +157,7 @@ class FpTest {
 
         val sc1= Algo.assignToTimeslot(courses, adjacencyMatrix).apply { tag.fileName = fileName }
         val sc2= Algo.largestDegreeFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName }
-        val sc3= Algo.largestStudentCountFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName }
+        val sc3= Algo.largestEnrollmentFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName }
         val sc4= Algo.largestWeightedDegreeFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName }
         val penalty1= Util.getPenalty(sc1, adjacencyMatrix, students.size)
         val penalty2= Util.getPenalty(sc2, adjacencyMatrix, students.size)
@@ -177,7 +174,7 @@ class FpTest {
         prin(sc2)
         prin("Penalty: $penalty2")
 
-        prin("\n\n ============ Largest Student Count First =============== \n")
+        prin("\n\n ============ Largest Enrollment First =============== \n")
         prin("Time table:")
         prin(sc3)
         prin("Penalty: $penalty3")
@@ -209,14 +206,26 @@ class FpTest {
     @Test
     fun realAssignmentTest_3(){
         for(i in Config.fileNames.indices){
-            Util.runScheduling(i, Config.maxTimeslot[i], false)
+            Util.runAndGetBestScheduling(i, Config.maxTimeslot[i], false)
         }
     }
 
     @Test
     fun realAssignmentTest_4(){
-        Util.runAllScheduling()
+        Util.runAllAndGetBestScheduling()
             .also { prin("\n\n\n=============== Hasil Semua Scheduling ==========") }
             .forEach { (tag, sc) -> prin("fileName= ${tag.fileName} sc= ${sc?.miniString()}") }
+    }
+
+    @Test
+    fun realAssignmentTest_5(){
+        val results= Util.runAllScheduling()
+        prin("\n")
+        val bestSchedulings= Util.getBestSchedulings(results)
+
+        prin("\n\n\n=============== Hasil Semua Scheduling ==========")
+        bestSchedulings.forEach { (tag, sc) -> prin("fileName= ${tag.fileName} sc= ${sc?.miniString()}") }
+
+        Util.saveAllResult(results)
     }
 }

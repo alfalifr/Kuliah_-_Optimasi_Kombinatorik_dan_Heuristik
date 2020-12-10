@@ -22,7 +22,7 @@ data class Assignment(val timeslot: Timeslot, val courses: List<Course> = mutabl
     override fun toString(): String = "$timeslot: $courses"
 }
 // */
-data class ScheduleTag(var algo: Any?= null, var fileName: String?= null){
+data class ScheduleTag(var algo: Algo= Algo.UNSORTED, var fileName: String?= null){
     fun miniString()= "$fileName - $algo"
 }
 data class Schedule(
