@@ -149,5 +149,6 @@ class KuliahTest {
     @Test
     fun cobTest(){
         prin("-1 % 10 = ${-1 % 10}")
+
     }
 }

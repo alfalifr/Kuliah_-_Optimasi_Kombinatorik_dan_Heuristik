@@ -5,6 +5,7 @@ import sidev.lib.check.notNull
 import sidev.lib.check.notNullTo
 import sidev.lib.collection.find
 import sidev.lib.collection.joinToString
+import sidev.lib.structure.prop.TagProp
 
 data class Course(val id: Int, val studentCount: Int, var degree: Int = 0){
     override fun toString(): String = "C$id"
@@ -21,7 +22,20 @@ data class Assignment(val timeslot: Timeslot, val courses: List<Course> = mutabl
     override fun toString(): String = "$timeslot: $courses"
 }
 // */
-data class Schedule(val assignments: MutableMap<Timeslot, MutableList<Course>> = mutableMapOf()){
+data class ScheduleTag(var algo: Any?= null, var fileName: String?= null){
+    fun miniString()= "$fileName - $algo"
+}
+data class Schedule(
+    val assignments: MutableMap<Timeslot, MutableList<Course>> = mutableMapOf(),
+//    var title: String = "<schedule>",
+//    var fileName: String? = "",
+//    var algo: Any?= null,
+    var penalty: Double = -1.0, //Nilai default
+    val tag: ScheduleTag= ScheduleTag(),
+) {
+    val timeslotCount: Int
+        get()= assignments.size
+
     fun getAssignment(no: Int): Assignment? = assignments.find { it.key.no == no }?.let {
         Assignment(it.key, it.value)
     } //assignments.find { it.timeslot.no == no }
@@ -68,6 +82,7 @@ data class Schedule(val assignments: MutableMap<Timeslot, MutableList<Course>> =
         override fun next(): Pair<Course, Timeslot> = currCourses[currCourseIndex++] to currTimeslot
     }
 
+    fun miniString(): String = "Schedule - ${tag.miniString()} : penalty=$penalty timeslots=$timeslotCount"
     override fun toString(): String = assignments.joinToString("\n") { "${it.key}: ${it.value}" }
 }
 

@@ -14,7 +14,7 @@ object Algo {
         courses.sortedByDescending { it.degree },
         adjacencyMatrix,
         availableTimeslot
-    )
+    ).apply { tag.algo = "Largest Degree First" }
 
     /**
      * [courses] merupakan List dg isi [Course.studentCount] yang udah diisikan.
@@ -27,7 +27,20 @@ object Algo {
         courses.sortedByDescending { it.studentCount },
         adjacencyMatrix,
         availableTimeslot
-    )
+    ).apply { tag.algo = "Largest Student Count First" }
+
+    /**
+     * [courses] merupakan List dg isi [Course.studentCount] dan [Course.degree] yang udah diisikan.
+     */
+    fun largestWeightedDegreeFirst(
+        courses: List<Course>,
+        adjacencyMatrix: Array<IntArray>,
+        availableTimeslot: List<Timeslot>? = null
+    ): Schedule = assignToTimeslot(
+        courses.sortedByDescending { it.degree * it.studentCount },
+        adjacencyMatrix,
+        availableTimeslot
+    ).apply { tag.algo = "Largest Weighted Degree First" }
 
     /**
      * Memasangkan [courses] ke [availableTimeslot] jika ada.
