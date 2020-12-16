@@ -67,28 +67,32 @@ class FpTest {
         val sc2= Algo.assignToTimeslot(courses, adjacencyMatrix2)
         val scLDF= Algo.largestDegreeFirst(coursesWithDegree, adjacencyMatrix2)
         val scLSCF= Algo.largestEnrollmentFirst(courses, adjacencyMatrix2)
+        val scLSDF= Algo.largestSaturationDegreeFirst(coursesWithDegree, adjacencyMatrix2)
 
         prin(sc1)
         prin(sc2)
         prin(scLDF)
         prin(scLSCF)
+        prin(scLSDF)
 
         val penalty1= Util.getPenalty(sc1, adjacencyMatrix2, students.size)
         val penalty2= Util.getPenalty(sc2, adjacencyMatrix2, students.size)
         val penalty3= Util.getPenalty(scLDF, adjacencyMatrix2, students.size)
         val penalty4= Util.getPenalty(scLSCF, adjacencyMatrix2, students.size)
+        val penalty5= Util.getPenalty(scLSDF, adjacencyMatrix2, students.size)
 
         prin(penalty1)
         prin(penalty2)
         prin(penalty3)
         prin(penalty4)
+        prin(penalty5)
     }
 
     @Test
     fun realAssignmentTest(){
         val folderDir= DATASET_DIR //"D:\\DataCloud\\OneDrive\\OneDrive - Institut Teknologi Sepuluh Nopember\\Kuliah\\SMT 7\\OKH-A\\M10\\OKH - Dataset - Toronto"
-        val courseDir= "$folderDir\\hec-s-92.crs" //car-s-91.crs" //car-f-92.crs" car-s-91
-        val studentDir= "$folderDir\\hec-s-92.stu" //car-s-91.stu" //car-f-92.stu"
+        val courseDir= "$folderDir\\car-f-92.crs" //hec-s-92.crs" //car-s-91.crs" //car-f-92.crs" car-s-91
+        val studentDir= "$folderDir\\car-f-92.crs" //hec-s-92.stu" //car-s-91.stu" //car-f-92.stu"
 
         val students= Util.readStudent(studentDir)
         val courses= Util.toListOfCourses(Util.readCourse(courseDir))
@@ -124,8 +128,8 @@ class FpTest {
         }
  */
         val fileName= "hec-s-92" //"pur-s-93"
-        val maxTimeslot= 18 //42
         val nameIndex= Config.getFileNameIndex(fileName) //Scanner(System.`in`).next().toInt()
+        val maxTimeslot= Config.maxTimeslot[nameIndex] //18 //42
 
         val fileDir= Config.getFileDir(nameIndex)
         val courseDir= "$fileDir$FILE_EXTENSION_COURSE" //hec-s-92.crs" //car-s-91.crs" //pur-s-93.crs" //\\car-f-92.crs"
@@ -142,6 +146,7 @@ class FpTest {
 
         prin("students.size= ${students.size}")
         prin("courses.size= ${courses.size}")
+        prin("courses= $courses")
 
         val adjacencyMatrix= Util.createCourseAdjacencyMatrix_Raw(courses.size, students)
         val density= Util.getDensity(adjacencyMatrix)
@@ -156,36 +161,45 @@ class FpTest {
 //        val adjacencyMatrix= Util.createCourseAdjacencyMatrix_Raw(courses.size, students)
 
         val sc1= Algo.assignToTimeslot(courses, adjacencyMatrix).apply { tag.fileName = fileName }
-        val sc2= Algo.largestDegreeFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName }
-        val sc3= Algo.largestEnrollmentFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName }
-        val sc4= Algo.largestWeightedDegreeFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName }
         val penalty1= Util.getPenalty(sc1, adjacencyMatrix, students.size)
-        val penalty2= Util.getPenalty(sc2, adjacencyMatrix, students.size)
-        val penalty3= Util.getPenalty(sc3, adjacencyMatrix, students.size)
-        val penalty4= Util.getPenalty(sc4, adjacencyMatrix, students.size)
-
         prin("\n\n ============ First Order =============== \n")
         prin("Time table:")
         prin(sc1)
         prin("Penalty: $penalty1")
 
+        val sc2= Algo.largestDegreeFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName }
+        val penalty2= Util.getPenalty(sc2, adjacencyMatrix, students.size)
         prin("\n\n ============ Largest Degree First =============== \n")
         prin("Time table:")
         prin(sc2)
         prin("Penalty: $penalty2")
 
+        val sc3= Algo.largestEnrollmentFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName }
+        val penalty3= Util.getPenalty(sc3, adjacencyMatrix, students.size)
         prin("\n\n ============ Largest Enrollment First =============== \n")
         prin("Time table:")
         prin(sc3)
         prin("Penalty: $penalty3")
 
+        val sc4= Algo.largestWeightedDegreeFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName }
+        val penalty4= Util.getPenalty(sc4, adjacencyMatrix, students.size)
         prin("\n\n ============ Largest Weighted Degree First =============== \n")
         prin("Time table:")
         prin(sc4)
         prin("Penalty: $penalty4")
 
+
+        prin("courses akhir= $courses")
+
+        val sc5= Algo.largestSaturationDegreeFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName }
+        val penalty5= Util.getPenalty(sc5, adjacencyMatrix, students.size)
+        prin("\n\n ============ Largest Saturated Degree First =============== \n")
+        prin("Time table:")
+        prin(sc5)
+        prin("Penalty: $penalty5")
+
 //        Util.printFinalSol(fileName, sc1, sc2, sc3, sc4)
-        Util.getLeastPenaltySchedule(sc1, sc2, sc3, sc4, maxTimeslot = maxTimeslot)
+        Util.getLeastPenaltySchedule(sc1, sc2, sc3, sc4, sc5, maxTimeslot = maxTimeslot)
 /*
         solFile.delete()
         for((course, timeslot) in sc1){
@@ -214,7 +228,7 @@ class FpTest {
     fun realAssignmentTest_4(){
         Util.runAllAndGetBestScheduling()
             .also { prin("\n\n\n=============== Hasil Semua Scheduling ==========") }
-            .forEach { (tag, sc) -> prin("fileName= ${tag.fileName} sc= ${sc?.miniString()}") }
+            .forEach { (tag, sc) -> prin("fileName= ${tag.fileName} sc= ${sc?.result?.miniString()} duration= ${sc?.duration}") }
     }
 
     @Test
@@ -224,7 +238,7 @@ class FpTest {
         val bestSchedulings= Util.getBestSchedulings(results)
 
         prin("\n\n\n=============== Hasil Semua Scheduling ==========")
-        bestSchedulings.forEach { (tag, sc) -> prin("fileName= ${tag.fileName} sc= ${sc?.miniString()}") }
+        bestSchedulings.forEach { (tag, sc) -> prin("fileName= ${tag.fileName} sc= ${sc?.result?.miniString()} duration= ${sc?.duration}") }
 
         Util.saveAllResult(results)
     }
