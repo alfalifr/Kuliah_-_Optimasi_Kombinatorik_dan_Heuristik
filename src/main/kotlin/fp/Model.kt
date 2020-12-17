@@ -35,7 +35,7 @@ data class Schedule(
 //    var algo: Any?= null,
     var penalty: Double = -1.0, //Nilai default
     val tag: ScheduleTag= ScheduleTag(),
-) {
+): Iterable<Pair<Course, Timeslot>> {
     val timeslotCount: Int
         get()= assignments.size
 
@@ -62,8 +62,18 @@ data class Schedule(
             it.key
         }
     }
+/*
+    fun iterator(orderedByCourse: Boolean, start: Int= 0): Iterator<Pair<Course, Timeslot>> = if(!orderedByCourse) iterator()
+    else object: Iterator<Pair<Course, Timeslot>> {
+        var i= start
+        var next: Pair<Course, Timeslot>?= null
 
-    operator fun iterator(): Iterator<Pair<Course, Timeslot>> = object: Iterator<Pair<Course, Timeslot>> {
+        override fun hasNext(): Boolean = getCourseTimeslot(i)?.also { next= assignments[it]!!.find { it.id == i }!! to it } != null
+        override fun next(): Pair<Course, Timeslot> = next!!
+    }
+ */
+
+    override operator fun iterator(): Iterator<Pair<Course, Timeslot>> = object: Iterator<Pair<Course, Timeslot>> {
         val mapItr= assignments.iterator()
         var currEntry: Map.Entry<Timeslot, List<Course>>?= if(mapItr.hasNext()) mapItr.next() else null
         var currCourseIndex: Int = 0
@@ -87,6 +97,10 @@ data class Schedule(
 
     fun miniString(): String = "Schedule - ${tag.miniString()} : penalty=$penalty timeslots=$timeslotCount"
     override fun toString(): String = assignments.joinToString("\n") { "${it.key}: ${it.value}" }
+}
+
+data class ScheduleConflict(val sc: Schedule, val conflicts: List<Pair<Timeslot, Int>>){
+    override fun toString(): String = sc.miniString() +"\nConflicts= \n" +conflicts.joinToString { it.first.toString() +": " +it.second.toString() }
 }
 
 data class TestResult<T> @OptIn(ExperimentalTime::class) constructor(val result: T, val duration: Duration)

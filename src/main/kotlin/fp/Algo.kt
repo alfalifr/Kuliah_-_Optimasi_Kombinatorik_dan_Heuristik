@@ -78,7 +78,7 @@ enum class Algo(val code: String) {
             val schedule= Schedule()
 
             if(availableTimeslot == null || availableTimeslot.isEmpty()) {
-                timeslots += Timeslot(1)
+                timeslots += Timeslot(0)
 
                 c1@ for(c1 in courses){
                     var alreadyAssigned= false
@@ -107,7 +107,7 @@ enum class Algo(val code: String) {
                     //Jika [availableTimeslot] == `null`, artinya tidak ada batas jml timeslot,
                     // maka buat timeslot baru.
                     if(!alreadyAssigned){
-                        val newT= Timeslot(timeslots.size +1)
+                        val newT= Timeslot(timeslots.size) //+1
                         timeslots += newT
                         schedule[newT]= mutableListOf(c1)
                     }
@@ -292,7 +292,7 @@ enum class Algo(val code: String) {
 
                     if(!visited[i1]){
                         if((availableTimeslot == null || availableTimeslot.isEmpty())){
-                            val newT= Timeslot(timeslots.size +1)
+                            val newT= Timeslot(timeslots.size) //+1
                             timeslots += newT
                             schedule[newT]= mutableListOf(c1)
                         }

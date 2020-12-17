@@ -8,6 +8,7 @@ import org.junit.Test
 import sidev.lib.collection.copy
 import sidev.lib.collection.forEachIndexed
 import sidev.lib.console.prin
+import sidev.lib.console.prine
 import java.io.File
 
 class FpTest {
@@ -218,9 +219,115 @@ class FpTest {
     }
 
     @Test
+    fun readTest(){
+        val crsFile= Config.getCourseFileDir(0)
+        val stuFile= Config.getStudentFileDir(0)
+
+        prin("\n\n ========= stu file ============= \n\n")
+        Util.readStudent(stuFile).forEach {
+            prin(it)
+        }
+        prin("\n\n ========= crs file ============= \n\n")
+        Util.readCourse(crsFile).forEach {
+            prin(it)
+        }
+    }
+
+    @Test
+    fun matrixTest(){
+        val crsFile= Config.getCourseFileDir(0)
+        val stuFile= Config.getStudentFileDir(0)
+
+        val students= Util.readStudent(stuFile)
+
+        val courses= Util.readCourse(crsFile)
+
+        val adj= Util.createCourseAdjacencyMatrix_Raw(courses.size, students)
+
+        prin("\n\n ========= stu file ============= \n\n")
+        students.forEach {
+            prin(it)
+        }
+/*
+        prin("\n\n ========= crs file ============= \n\n")
+        courses.forEach {
+            prin(it)
+        }
+ */
+/*
+        prin("\n\n ========= adj matrix ============= \n\n")
+        adj.forEach {
+            prin(it.joinToString())
+        }
+ */
+    }
+
+    @Test
+    fun testReal(){
+        val scs= Util.runScheduling(0)
+        val sc= scs[2]
+
+        Util.saveRes(sc.result, File(Config.getResFileDir(0)))
+        Util.saveSol(sc.result, File(Config.getSolutionFileDir(0)).also { prine("saveSol file= $it") }, false).also { prin("Hasil saveSol= $it") }
+    }
+
+    @Test
+    fun matrixTest_manual(){
+        val courses= listOf(
+            listOf(1, 4),
+            listOf(2, 4),
+            listOf(3, 1),
+            listOf(4, 1),
+            listOf(5, 1),
+        ) //Config.getCourseFileDir(0)
+        val students= listOf(
+            listOf(2),
+            listOf(2, 1),
+            listOf(1, 3),
+            listOf(1, 2),
+            listOf(1, 2, 5, 4),
+        ) //Config.getStudentFileDir(0)
+
+        val studs= Util.toListOfStudents(students)
+        val cour= Util.toListOfCourses(courses)
+
+        val adj= Util.createCourseAdjacencyMatrix(courses.size, studs)
+        val sc= Algo.assignToTimeslot(cour, adj)
+        val penalty= Util.getPenalty(sc, adj, studs.size)
+
+/*
+        prin("\n\n ========= stu file ============= \n\n")
+        students.forEach {
+            prin(it)
+        }
+ */
+/*
+        prin("\n\n ========= crs file ============= \n\n")
+        courses.forEach {
+            prin(it)
+        }
+ */
+///*
+        prin("\n\n ========= adj matrix ============= \n\n")
+        adj.forEach {
+            prin(it.joinToString())
+        }
+
+        prin("Schedule: $sc")
+        prin("Penalty: $penalty")
+
+        val dir= DATASET_DIR
+        val fileName= "$dir\\_cob-1"
+
+        Util.saveSol(sc, File("$fileName.sol"))
+        Util.saveRes(sc, File("$fileName.res"))
+// */
+    }
+
+    @Test
     fun realAssignmentTest_3(){
         for(i in Config.fileNames.indices){
-            Util.runAndGetBestScheduling(i, Config.maxTimeslot[i], false)
+            Util.runAndGetBestScheduling(i, Config.maxTimeslot[i], printEachScheduleRes = false)
         }
     }
 
@@ -239,7 +346,12 @@ class FpTest {
 
         prin("\n\n\n=============== Hasil Semua Scheduling ==========")
         bestSchedulings.forEach { (tag, sc) -> prin("fileName= ${tag.fileName} sc= ${sc?.result?.miniString()} duration= ${sc?.duration}") }
-
+/*
+        prin("\n\n\n=============== Hasil Semua Scheduling ==========")
+        val conflicts= Util.checkConflicts(results, )
+        bestSchedulings.forEach { (tag, sc) -> prin("fileName= ${tag.fileName} sc= ${sc?.result?.miniString()} duration= ${sc?.duration}") }
+ */
         Util.saveAllResult(results)
+        Util.saveFinalSol(bestSchedulings)
     }
 }
