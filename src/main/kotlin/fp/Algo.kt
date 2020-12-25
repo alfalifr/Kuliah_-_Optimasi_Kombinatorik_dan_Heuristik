@@ -1,19 +1,51 @@
 package fp
 
 import fp.Config.COURSE_INDEX_OFFSET
+import sidev.lib.collection.fastSortedWith
+//import fp.Algo.Component
 
-enum class Algo(val code: String) {
+enum class Algo(val code: String, vararg val component: Component) {
     UNSORTED("n0"),
-    LARGEST_DEGREE_FIRST("LaD"),
-    LARGEST_WEIGHTED_DEGREE_FIRST("LaWD"),
-    LARGEST_ENROLLMENT_FIRST("LaE"),
-    LARGEST_SATURATED_DEGREE_FIRST("LaSD"),
-    LARGEST_SATURATED_WEIGHTED_DEGREE_FIRST("LaSWD"),
-    LARGEST_SATURATED_ENROLLMENT_FIRST("LaSE"),
-    LARGEST_SATURATED_DEGREE_FIRST_ORDERED("LaSDO"),
-    LARGEST_SATURATED_WEIGHTED_DEGREE_FIRST_ORDERED("LaSWDO"),
-    LARGEST_SATURATED_ENROLLMENT_FIRST_ORDERED("LaSEO"),
+    LaD("LaD", Component.DEGREE),
+    LaE("LaE", Component.ENROLLMENT),
+    X_LaCE("LaCE", Component.COMMON_ENROLLMENT),
+    LaWD("LaWD", Component.WEIGHTED_DEGREE),
+    X_LaWCD("LaWCD", Component.WEIGHTED_COMMON_DEGREE),
+    X_LaWCxD("LaWCxD", Component.WEIGHTED_COMPLEX_DEGREE),
+    LaS_D("LaS", Component.SATURATION),
+    LaWD_E("LaWD_E", Component.WEIGHTED_DEGREE, Component.ENROLLMENT),
+    LaE_WD("LaE_WD", Component.ENROLLMENT, Component.WEIGHTED_DEGREE),
+    LaS_WD("LaS_WD", Component.SATURATION, Component.WEIGHTED_DEGREE),
+    LaS_WD_E("LaS_WD_E", Component.SATURATION, Component.WEIGHTED_DEGREE, Component.ENROLLMENT),
+    LaS_E_WD("LaS_E_WD", Component.SATURATION, Component.ENROLLMENT, Component.WEIGHTED_DEGREE),
+    LaS_E("LaS_E", Component.SATURATION, Component.ENROLLMENT),
+    X_LaS_CE("LaS_CE", Component.SATURATION, Component.COMMON_ENROLLMENT),
+    X_LaS_WCD("LaS_WCD", Component.SATURATION, Component.WEIGHTED_COMMON_DEGREE),
+    X_LaS_WCD_D("LaS_WCD_D", Component.SATURATION, Component.WEIGHTED_COMMON_DEGREE, Component.DEGREE),
+    X_LaS_WCD_CE("LaS_WCD_CE", Component.SATURATION, Component.WEIGHTED_COMMON_DEGREE, Component.COMMON_ENROLLMENT),
+    LaD_S_D("LaD_S_D", Component.DEGREE, Component.SATURATION, Component.DEGREE),
+    LaWD_S_WD("LaWD_S_WD", Component.WEIGHTED_DEGREE, Component.SATURATION, Component.WEIGHTED_DEGREE),
+    LaE_S_E("LaE_S_E", Component.ENROLLMENT, Component.SATURATION, Component.ENROLLMENT),
+    LaWD_E_S_WD_E("LaWD_E_S_WD_E", Component.WEIGHTED_DEGREE, Component.ENROLLMENT, Component.SATURATION, Component.WEIGHTED_DEGREE, Component.ENROLLMENT),
+    LaE_WD_S_E_WD("LaE_WD_S_E_WD", Component.ENROLLMENT, Component.WEIGHTED_DEGREE, Component.SATURATION, Component.ENROLLMENT, Component.WEIGHTED_DEGREE),
+    X_LaCE_S_CE("LaCE_S_CE", Component.COMMON_ENROLLMENT, Component.SATURATION, Component.COMMON_ENROLLMENT),
+    X_LaWCD_S_WCD("LaWCD_S_WCD", Component.WEIGHTED_COMMON_DEGREE, Component.SATURATION, Component.WEIGHTED_COMMON_DEGREE),
+    X_LaWCD_D_S_WCD_D("LaWCD_D_S_WCD_D", Component.WEIGHTED_COMMON_DEGREE, Component.DEGREE, Component.SATURATION, Component.WEIGHTED_COMMON_DEGREE, Component.DEGREE),
+    X_LaWCD_CE_S_WCD_CE("LaWCD_CE_S_WCD_CE", Component.WEIGHTED_COMMON_DEGREE, Component.COMMON_ENROLLMENT, Component.SATURATION, Component.WEIGHTED_COMMON_DEGREE, Component.COMMON_ENROLLMENT),
+    X_LaWCD_S_CE("LaWCD_S_CE", Component.WEIGHTED_COMMON_DEGREE, Component.SATURATION, Component.COMMON_ENROLLMENT),
+    X_LaWCxD_S_CE("LaWCxD_S_CE", Component.WEIGHTED_COMPLEX_DEGREE, Component.SATURATION, Component.COMMON_ENROLLMENT),
+    X_LaWCxD_S_D("LaWCxD_S_D", Component.WEIGHTED_COMPLEX_DEGREE, Component.SATURATION, Component.DEGREE),
+    X_LaWCxD_S_WCD_CE("LaWCxD_S_WCD_CE", Component.WEIGHTED_COMPLEX_DEGREE, Component.SATURATION, Component.WEIGHTED_COMMON_DEGREE, Component.COMMON_ENROLLMENT),
+    X_LaWCxD_S_WCD_D("LaWCxD_S_WCD_D", Component.WEIGHTED_COMPLEX_DEGREE, Component.SATURATION, Component.WEIGHTED_COMMON_DEGREE, Component.DEGREE),
+    X_LaWCD_CE_S_CE("LaWCD_CE_S_CE", Component.WEIGHTED_COMMON_DEGREE, Component.COMMON_ENROLLMENT, Component.SATURATION, Component.COMMON_ENROLLMENT),
     ;
+
+    enum class Component(val code: String) {
+        DEGREE("D"), ENROLLMENT("E"), WEIGHTED_DEGREE("WD"),
+        COMMON_ENROLLMENT("CE"), WEIGHTED_COMMON_DEGREE("WCD"),
+        WEIGHTED_COMPLEX_DEGREE("WCxD"),
+        SATURATION("S")
+    }
 
     override fun toString(): String = name //.replace("_", " ") //.capitalize()
 
@@ -22,7 +54,7 @@ enum class Algo(val code: String) {
         /**
          * [courses] merupakan List dg isi [Course.degree] yang udah diisikan.
          */
-        fun largestDegreeFirst(
+        fun laD(
             courses: List<Course>,
             adjacencyMatrix: Array<IntArray>,
             availableTimeslot: List<Timeslot>? = null
@@ -30,12 +62,12 @@ enum class Algo(val code: String) {
             courses.sortedByDescending { it.degree },
             adjacencyMatrix,
             availableTimeslot
-        ).apply { tag.algo = LARGEST_DEGREE_FIRST }
+        ).apply { tag.algo = LaD }
 
         /**
          * [courses] merupakan List dg isi [Course.studentCount] dan [Course.degree] yang udah diisikan.
          */
-        fun largestWeightedDegreeFirst(
+        fun laWD(
             courses: List<Course>,
             adjacencyMatrix: Array<IntArray>,
             availableTimeslot: List<Timeslot>? = null
@@ -43,12 +75,38 @@ enum class Algo(val code: String) {
             courses.sortedByDescending { it.degree * it.studentCount },
             adjacencyMatrix,
             availableTimeslot
-        ).apply { tag.algo = LARGEST_WEIGHTED_DEGREE_FIRST }
+        ).apply { tag.algo = LaWD }
+
+        /**
+         * [courses] merupakan List dg isi [Course.studentCount] dan [Course.degree] yang udah diisikan.
+         */
+        fun laWCD(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = assignToTimeslot(
+            courses.sortedByDescending { it.degree * it.conflictingStudentCount },
+            adjacencyMatrix,
+            availableTimeslot
+        ).apply { tag.algo = X_LaWCD }
+
+        /**
+         * [courses] merupakan List dg isi [Course.studentCount] dan [Course.degree] yang udah diisikan.
+         */
+        fun laWCxD(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = assignToTimeslot(
+            courses.sortedByDescending { it.degree * it.conflictingStudentCount * it.studentCount },
+            adjacencyMatrix,
+            availableTimeslot
+        ).apply { tag.algo = X_LaWCxD }
 
         /**
          * [courses] merupakan List dg isi [Course.studentCount] yang udah diisikan.
          */
-        fun largestEnrollmentFirst(
+        fun laE(
             courses: List<Course>,
             adjacencyMatrix: Array<IntArray>,
             availableTimeslot: List<Timeslot>? = null
@@ -56,7 +114,56 @@ enum class Algo(val code: String) {
             courses.sortedByDescending { it.studentCount },
             adjacencyMatrix,
             availableTimeslot
-        ).apply { tag.algo = LARGEST_ENROLLMENT_FIRST }
+        ).apply { tag.algo = LaE }
+
+        /**
+         * [courses] merupakan List dg isi [Course.studentCount] yang udah diisikan.
+         */
+        fun laCE(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = assignToTimeslot(
+            courses.sortedByDescending { it.conflictingStudentCount },
+            adjacencyMatrix,
+            availableTimeslot
+        ).apply { tag.algo = X_LaCE }
+
+        /**
+         * [courses] merupakan List dg isi [Course.studentCount] dan [Course.degree] yang udah diisikan.
+         */
+        fun laWD_E(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = assignToTimeslot(
+            courses.fastSortedWith { n1, n2 ->
+                val wd1= n1.degree * n1.studentCount
+                val wd2= n2.degree * n2.studentCount
+                if(wd1 != wd2) wd1.compareTo(wd2)
+                else n1.studentCount.compareTo(n2.studentCount)
+            },
+            adjacencyMatrix,
+            availableTimeslot
+        ).apply { tag.algo = LaWD_E }
+
+        /**
+         * [courses] merupakan List dg isi [Course.studentCount] dan [Course.degree] yang udah diisikan.
+         */
+        fun laE_WD(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = assignToTimeslot(
+            courses.fastSortedWith { n1, n2 ->
+                val wd1= n1.degree * n1.studentCount
+                val wd2= n2.degree * n2.studentCount
+                if(n1.studentCount != n2.studentCount) n1.studentCount.compareTo(n2.studentCount)
+                else wd1.compareTo(wd2)
+            },
+            adjacencyMatrix,
+            availableTimeslot
+        ).apply { tag.algo = LaE_WD }
 
         /**
          * Memasangkan [courses] ke [availableTimeslot] jika ada.
@@ -140,63 +247,258 @@ enum class Algo(val code: String) {
         }
 
 
-        fun largestSaturationDegreeFirstOrdered(
+        fun laD_S_D(
             courses: List<Course>,
             adjacencyMatrix: Array<IntArray>,
             availableTimeslot: List<Timeslot>? = null
-        ): Schedule = largestSaturationDegreeFirst(
+        ): Schedule = laS_D(
             courses.sortedByDescending { it.degree },
             adjacencyMatrix, availableTimeslot
-        ).apply { tag.algo= LARGEST_SATURATED_DEGREE_FIRST_ORDERED }
+        ).apply { tag.algo= LaD_S_D }
 
-        fun largestSaturationDegreeFirst(
+        fun laS_D(
             courses: List<Course>,
             adjacencyMatrix: Array<IntArray>,
             availableTimeslot: List<Timeslot>? = null
-        ): Schedule = largestSaturationFirst(courses, adjacencyMatrix, availableTimeslot) { acc, c ->
+        ): Schedule = laS(courses, adjacencyMatrix, availableTimeslot) { acc, c ->
             acc.degree < c.degree
-        }.apply { tag.algo= LARGEST_SATURATED_DEGREE_FIRST }
+        }.apply { tag.algo= LaS_D }
 
 
-        fun largestSaturationWeightedDegreeFirstOrdered(
+        fun laWD_S_WD(
             courses: List<Course>,
             adjacencyMatrix: Array<IntArray>,
             availableTimeslot: List<Timeslot>? = null
-        ): Schedule = largestSaturationWeightedDegreeFirst(
+        ): Schedule = laS_WD(
             courses.sortedByDescending { it.degree * it.studentCount },
             adjacencyMatrix, availableTimeslot
-        ).apply { tag.algo= LARGEST_SATURATED_WEIGHTED_DEGREE_FIRST_ORDERED }
+        ).apply { tag.algo= LaWD_S_WD }
 
-        fun largestSaturationWeightedDegreeFirst(
+        fun laS_WD(
             courses: List<Course>,
             adjacencyMatrix: Array<IntArray>,
             availableTimeslot: List<Timeslot>? = null
-        ): Schedule = largestSaturationFirst(courses, adjacencyMatrix, availableTimeslot) { acc, c ->
+        ): Schedule = laS(courses, adjacencyMatrix, availableTimeslot) { acc, c ->
             acc.degree * acc.studentCount < c.degree * c.studentCount
-        }.apply { tag.algo= LARGEST_SATURATED_WEIGHTED_DEGREE_FIRST }
+        }.apply { tag.algo= LaS_WD }
 
 
-        fun largestSaturationEnrollmentFirstOrdered(
+        fun laWD_E_S_WD_E(
             courses: List<Course>,
             adjacencyMatrix: Array<IntArray>,
             availableTimeslot: List<Timeslot>? = null
-        ): Schedule = largestSaturationEnrollmentFirst(
+        ): Schedule = laS_WD_E(
+            courses.fastSortedWith { n1, n2 ->
+                val wd1= n1.degree * n1.studentCount
+                val wd2= n2.degree * n2.studentCount
+                if(wd1 != wd2) wd1.compareTo(wd2)
+                else n1.studentCount.compareTo(n2.studentCount)
+            }, //.sortedByDescending { it.degree * it.studentCount },
+            adjacencyMatrix, availableTimeslot
+        ).apply { tag.algo= LaWD_E_S_WD_E }
+
+        fun laS_WD_E(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = laS(courses, adjacencyMatrix, availableTimeslot) { acc, c ->
+            val wdAcc= acc.degree * acc.studentCount
+            val wdC= c.degree * c.studentCount
+            wdAcc < wdC || acc.studentCount < c.studentCount
+        }.apply { tag.algo= LaS_WD_E }
+
+
+        fun laE_WD_S_E_WD(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = laS_E_WD(
+            courses.fastSortedWith { n1, n2 ->
+                val wd1= n1.degree * n1.studentCount
+                val wd2= n2.degree * n2.studentCount
+                if(n1.studentCount != n2.studentCount) n1.studentCount.compareTo(n2.studentCount)
+                else wd1.compareTo(wd2)
+            }, //.sortedByDescending { it.degree * it.studentCount },
+            adjacencyMatrix, availableTimeslot
+        ).apply { tag.algo= LaE_WD_S_E_WD }
+
+        fun laS_E_WD(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = laS(courses, adjacencyMatrix, availableTimeslot) { acc, c ->
+            val wdAcc= acc.degree * acc.studentCount
+            val wdC= c.degree * c.studentCount
+            acc.studentCount < c.studentCount || wdAcc < wdC
+        }.apply { tag.algo= LaS_E_WD }
+
+
+        fun laE_S_E(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = laS_E(
             courses.sortedByDescending { it.studentCount },
             adjacencyMatrix, availableTimeslot
-        ).apply { tag.algo= LARGEST_SATURATED_ENROLLMENT_FIRST_ORDERED }
+        ).apply { tag.algo= LaE_S_E }
 
-        fun largestSaturationEnrollmentFirst(
+        fun laS_E(
             courses: List<Course>,
             adjacencyMatrix: Array<IntArray>,
             availableTimeslot: List<Timeslot>? = null
-        ): Schedule = largestSaturationFirst(courses, adjacencyMatrix, availableTimeslot) { acc, c ->
+        ): Schedule = laS(courses, adjacencyMatrix, availableTimeslot) { acc, c ->
             acc.studentCount < c.studentCount
-        }.apply { tag.algo= LARGEST_SATURATED_ENROLLMENT_FIRST }
+        }.apply { tag.algo= LaS_E }
+
+
+        fun laCE_S_CE(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = laS_CE(
+            courses.sortedByDescending { it.conflictingStudentCount },
+            adjacencyMatrix, availableTimeslot
+        ).apply { tag.algo= X_LaCE_S_CE }
+
+        fun laS_CE(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = laS(courses, adjacencyMatrix, availableTimeslot) { acc, c ->
+            acc.conflictingStudentCount < c.conflictingStudentCount
+        }.apply { tag.algo= X_LaS_CE }
+
+
+        fun laWCD_S_WCD(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = laS_WCD(
+            courses.sortedByDescending { it.degree * it.conflictingStudentCount },
+            adjacencyMatrix, availableTimeslot
+        ).apply { tag.algo= X_LaWCD_S_WCD }
+
+        fun laWCD_S_CE(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = laS_CE(
+            courses.sortedByDescending { it.degree * it.conflictingStudentCount },
+            adjacencyMatrix, availableTimeslot
+        ).apply { tag.algo= X_LaWCD_S_CE }
+
+        fun laWCxD_S_CE(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = laS_CE(
+            courses.sortedByDescending { it.degree * it.conflictingStudentCount * it.studentCount },
+            adjacencyMatrix, availableTimeslot
+        ).apply { tag.algo= X_LaWCxD_S_CE }
+
+        fun laWCxD_S_D(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = laS_D(
+            courses.sortedByDescending { it.degree * it.conflictingStudentCount * it.studentCount },
+            adjacencyMatrix, availableTimeslot
+        ).apply { tag.algo= X_LaWCxD_S_D }
+
+        fun laWCxD_S_WCD_CE(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = laS_WCD_CE(
+            courses.sortedByDescending { it.degree * it.conflictingStudentCount * it.studentCount },
+            adjacencyMatrix, availableTimeslot
+        ).apply { tag.algo= X_LaWCxD_S_WCD_CE }
+
+        fun laWCxD_S_WCD_D(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = laS_WCD_D(
+            courses.sortedByDescending { it.degree * it.conflictingStudentCount * it.studentCount },
+            adjacencyMatrix, availableTimeslot
+        ).apply { tag.algo= X_LaWCxD_S_WCD_D }
+
+        fun laWCD_CE_S_CE(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = laS_CE(
+            courses.fastSortedWith { n1, n2 ->
+                val wcd1= n1.degree * n1.conflictingStudentCount
+                val wcd2= n2.degree * n2.conflictingStudentCount
+                if(wcd1 != wcd2) wcd1.compareTo(wcd2)
+                else n1.conflictingStudentCount.compareTo(n2.conflictingStudentCount)
+            },
+            adjacencyMatrix, availableTimeslot
+        ).apply { tag.algo= X_LaWCD_CE_S_CE }
+
+        fun laS_WCD(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = laS(courses, adjacencyMatrix, availableTimeslot) { acc, c ->
+            acc.degree * acc.conflictingStudentCount < c.degree * c.conflictingStudentCount
+        }.apply { tag.algo= X_LaS_WCD }
+
+
+        fun laWCD_D_S_WCD_D(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = laS_WCD_D(
+            courses.fastSortedWith { n1, n2 ->
+                val wcd1= n1.degree * n1.conflictingStudentCount
+                val wcd2= n2.degree * n2.conflictingStudentCount
+                if(wcd1 != wcd2) wcd1.compareTo(wcd2)
+                else n1.degree.compareTo(n2.degree)
+            },
+            adjacencyMatrix, availableTimeslot
+        ).apply { tag.algo= X_LaWCD_D_S_WCD_D }
+
+        fun laS_WCD_D(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = laS(courses, adjacencyMatrix, availableTimeslot) { acc, c ->
+            val wcd1= acc.degree * acc.conflictingStudentCount
+            val wcd2= c.degree * c.conflictingStudentCount
+            wcd1 < wcd2 || acc.degree < c.degree
+        }.apply { tag.algo= X_LaS_WCD_D }
+
+
+        fun laWCD_CE_S_WCD_CE(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = laS_WCD_CE(
+            courses.fastSortedWith { n1, n2 ->
+                val wcd1= n1.degree * n1.conflictingStudentCount
+                val wcd2= n2.degree * n2.conflictingStudentCount
+                if(wcd1 != wcd2) wcd1.compareTo(wcd2)
+                else n1.conflictingStudentCount.compareTo(n2.conflictingStudentCount)
+            },
+            adjacencyMatrix, availableTimeslot
+        ).apply { tag.algo= X_LaWCD_CE_S_WCD_CE }
+
+        fun laS_WCD_CE(
+            courses: List<Course>,
+            adjacencyMatrix: Array<IntArray>,
+            availableTimeslot: List<Timeslot>? = null
+        ): Schedule = laS(courses, adjacencyMatrix, availableTimeslot) { acc, c ->
+            val wcd1= acc.degree * acc.conflictingStudentCount
+            val wcd2= c.degree * c.conflictingStudentCount
+            wcd1 < wcd2 || acc.conflictingStudentCount < c.conflictingStudentCount
+        }.apply { tag.algo= X_LaS_WCD_CE }
 
         /**
          * [courses] merupakan List dg isi [Course.studentCount] dan [Course.degree] yang udah diisikan.
          */
-        fun largestSaturationFirst(
+        fun laS(
             courses: List<Course>,
             adjacencyMatrix: Array<IntArray>,
             availableTimeslot: List<Timeslot>? = null,

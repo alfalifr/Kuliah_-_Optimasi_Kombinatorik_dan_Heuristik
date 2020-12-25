@@ -66,9 +66,9 @@ class FpTest {
 
         val sc1= Algo.assignToTimeslot(courses, adjacencyMatrix1)
         val sc2= Algo.assignToTimeslot(courses, adjacencyMatrix2)
-        val scLDF= Algo.largestDegreeFirst(coursesWithDegree, adjacencyMatrix2)
-        val scLSCF= Algo.largestEnrollmentFirst(courses, adjacencyMatrix2)
-        val scLSDF= Algo.largestSaturationDegreeFirst(coursesWithDegree, adjacencyMatrix2)
+        val scLDF= Algo.laD(coursesWithDegree, adjacencyMatrix2)
+        val scLSCF= Algo.laE(courses, adjacencyMatrix2)
+        val scLSDF= Algo.laS_D(coursesWithDegree, adjacencyMatrix2)
 
         prin(sc1)
         prin(sc2)
@@ -168,21 +168,21 @@ class FpTest {
         prin(sc1)
         prin("Penalty: $penalty1")
 
-        val sc2= Algo.largestDegreeFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName }
+        val sc2= Algo.laD(courses, adjacencyMatrix).apply { tag.fileName = fileName }
         val penalty2= Util.getPenalty(sc2, adjacencyMatrix, students.size)
         prin("\n\n ============ Largest Degree First =============== \n")
         prin("Time table:")
         prin(sc2)
         prin("Penalty: $penalty2")
 
-        val sc3= Algo.largestEnrollmentFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName }
+        val sc3= Algo.laE(courses, adjacencyMatrix).apply { tag.fileName = fileName }
         val penalty3= Util.getPenalty(sc3, adjacencyMatrix, students.size)
         prin("\n\n ============ Largest Enrollment First =============== \n")
         prin("Time table:")
         prin(sc3)
         prin("Penalty: $penalty3")
 
-        val sc4= Algo.largestWeightedDegreeFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName }
+        val sc4= Algo.laWD(courses, adjacencyMatrix).apply { tag.fileName = fileName }
         val penalty4= Util.getPenalty(sc4, adjacencyMatrix, students.size)
         prin("\n\n ============ Largest Weighted Degree First =============== \n")
         prin("Time table:")
@@ -192,7 +192,7 @@ class FpTest {
 
         prin("courses akhir= $courses")
 
-        val sc5= Algo.largestSaturationDegreeFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName }
+        val sc5= Algo.laS_D(courses, adjacencyMatrix).apply { tag.fileName = fileName }
         val penalty5= Util.getPenalty(sc5, adjacencyMatrix, students.size)
         prin("\n\n ============ Largest Saturated Degree First =============== \n")
         prin("Time table:")
@@ -321,6 +321,7 @@ class FpTest {
 
         Util.saveSol(sc, File("$fileName.sol"))
         Util.saveRes(sc, File("$fileName.res"))
+        Util.saveExm(sc, File("$fileName.exm"))
 // */
     }
 

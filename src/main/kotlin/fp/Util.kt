@@ -2,14 +2,15 @@
 package fp
 
 import fp.Config.COURSE_INDEX_OFFSET
+import fp.Config.DATASET_DIR
 import fp.Config.FILE_EXTENSION_COURSE
+import fp.Config.FILE_EXTENSION_EXM
 import fp.Config.FILE_EXTENSION_RES
+import fp.Config.FILE_EXTENSION_SLN
 import fp.Config.FILE_EXTENSION_SOLUTION
 import fp.Config.FILE_EXTENSION_STUDENT
 import sidev.lib.collection.array.forEachIndexed
-import sidev.lib.collection.countDuplicationBy
 import sidev.lib.collection.forEachIndexed
-import sidev.lib.collection.gapsBy
 import sidev.lib.console.prin
 import sidev.lib.console.prine
 import sidev.lib.console.prinr
@@ -22,6 +23,7 @@ import java.lang.IllegalArgumentException
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.math.absoluteValue
+import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTime
 
@@ -136,6 +138,32 @@ object Util {
     }
 
     /**
+     * Menghitung matrix yg berisi jumlah mhs yg mengambil 2 atau lebih course pada course C[i][j].
+     * Fungsi ini sama dg [createCourseAdjacencyMatrix_Raw], namun dg parameter [List<List<Int>].
+     * Hasil return adalah matrix yang hanya berisi int.
+     */
+    fun createCourseAdjacencyMatrix_Raw(courses: List<Course>, studCourseTable: List<List<Int>>): Array<IntArray> {
+        val courseCount= courses.size
+        val adjacencyMatrix= Array(courseCount){ IntArray(courseCount) }
+
+        courses.forEach { it.studentCount= 0 }
+        studCourseTable.forEachIndexed { i, row ->
+//                prine("createCourseAdjacencyMatrix_Raw row= $row ==== lebih dari 1")
+            for((u, fromCourseId_) in row.withIndex()){
+                val fromCourseId= fromCourseId_ - COURSE_INDEX_OFFSET //Karena courseId dimulai dari 1.
+                courses[fromCourseId].studentCount++
+                for(o in u+1 until row.size){ //Otomatis gak jalan kalo cuma 1 size-nya.
+                    val toCourseId= row[o] - COURSE_INDEX_OFFSET
+                    adjacencyMatrix[fromCourseId][toCourseId]++
+                    adjacencyMatrix[toCourseId][fromCourseId]++
+                }
+            }
+//            prine("createCourseAdjacencyMatrix_Raw row= $row")
+        }
+        return adjacencyMatrix
+    }
+
+    /**
      * Menghitung matrix yg berisi course yang tidak boleh dijadwalkan bersamaan karena
      * ada mhs yg mengambil 2 atau lebih course pada course C[i][j].
      *
@@ -169,6 +197,18 @@ object Util {
         return res
     }
 
+    /**
+     * Menghitung jml mhs yang setidaknya mengambil 2 course sehingga tidak dapat dijadwalkan pada timeslot yg sama.
+     * Fungsi ini tidak hanya menghitung jml course lain yang bentrok, namun juga jml mhs nya.
+     */
+    fun setConflictingEnrollmentCount(courses: List<Course>, courseAdjacencyMatrix: Array<IntArray>) {
+        if(courses.size != courseAdjacencyMatrix.size)
+            throw IllegalArgumentException()
+        courses.forEachIndexed { i, course ->
+            course.conflictingStudentCount= courseAdjacencyMatrix[i].sum()
+        }
+    }
+
     //w0=16, w1=8, w2=4, w3=2 and w4=1 -> Berdasarkan di FP.
     //Penalti msh berdasarkan rumus di UAS.
     /**
@@ -183,6 +223,7 @@ object Util {
             for(u in i+1 until row.size){
                 val t2= schedule.getCourseTimeslot(u + COURSE_INDEX_OFFSET)!!
                 val conflict= courseAdjacencyMatrix[i][u].toDouble()
+                if(conflict == 0.0) continue
                 val timeslotDistance= (t1.no - t2.no).absoluteValue.toDouble()
 
                 val weight= if(timeslotDistance in weightRange){
@@ -208,7 +249,7 @@ object Util {
         }
         return conflicts / (courseAdjacencyMatrix.size pow 2).toDouble()
     }
-
+///*
     fun getLeastPenaltySchedule(vararg scs: Schedule, maxTimeslot: Int = 0): Schedule? {
         if(scs.isEmpty()) throw IllegalArgExc(
             paramExcepted = arrayOf("scs"), detailMsg = "Param `scs` gak boleh kosong."
@@ -221,6 +262,26 @@ object Util {
         }
         else filtered.reduce { acc, schedule -> if(acc.penalty <= schedule.penalty) acc else schedule }.also {
             prinr("Schedule dg penalty paling sedikit yg tidak melebihi maxTimeslot='$maxTimeslot' adalah : \n${it.miniString()}")
+        }
+    }
+// */
+    @OptIn(ExperimentalTime::class)
+    fun getLeastPenaltyAndTimeSchedule(vararg scs: TestResult<Schedule>, maxTimeslot: Int = 0): TestResult<Schedule>? {
+        if(scs.isEmpty()) throw IllegalArgExc(
+            paramExcepted = arrayOf("scs"), detailMsg = "Param `scs` gak boleh kosong."
+        )
+        val filtered= if(maxTimeslot < 1) scs.asList()
+            else scs.filter { it.result.assignments.size <= maxTimeslot }
+        return if(filtered.isEmpty()) {
+            prinw("Tidak ada schedule '${scs.first().result.tag.fileName}' yang tidak melebihi maxTimeslot='$maxTimeslot', return `null`")
+            null
+        }
+        else filtered.reduce { acc, e ->
+            val scAcc= acc.result
+            val scE= e.result
+            if(scAcc.penalty < scE.penalty || scAcc.penalty == scE.penalty && acc.duration <= e.duration) acc else e
+        }.also {
+            prinr("Schedule dg penalty paling sedikit yg tidak melebihi maxTimeslot='$maxTimeslot' adalah : \n${it.result.miniString()}")
         }
     }
 
@@ -251,26 +312,32 @@ object Util {
 
         val students= readStudent(studentDir)
         val courses= toListOfCourses(readCourse(courseDir))
-        val crsDups= courses.countDuplicationBy { it.id }
-        val crsGaps= courses.gapsBy { it.id }
 
         prin("students.size= ${students.size}")
         prin("courses.size= ${courses.size}")
+/*
+        val crsDups= courses.countDuplicationBy { it.id }
+        val crsGaps= courses.gapsBy { it.id }
         prin("course dups= $crsDups")
         prin("course any dups= ${crsDups.any { it.value > 0 }}")
         prin("course gaps= $crsGaps")
+// */
 
-        val adjacencyMatrix= createCourseAdjacencyMatrix_Raw(courses.size, students)
+        val adjacencyMatrix= createCourseAdjacencyMatrix_Raw(courses, students)
         val density= getDensity(adjacencyMatrix)
 
 //        courseAdjacencyMatrix= adjacencyMatrix
 
         prin("density= $density")
 
+//        setDegreeList(courses, adjacencyMatrix)
+///*
         val degreeList= getDegreeList(adjacencyMatrix)
         degreeList.forEachIndexed { i, degree ->
             courses[i].degree= degree
         }
+// */
+        setConflictingEnrollmentCount(courses, adjacencyMatrix)
 
 //        val adjacencyMatrix= Util.createCourseAdjacencyMatrix_Raw(courses.size, students)
 /*
@@ -288,17 +355,62 @@ object Util {
         val sc8: Schedule
         val sc9: Schedule
         val sc10: Schedule
+        val sc11: Schedule
+        val sc12: Schedule
+        val sc13: Schedule
+        val sc14: Schedule
+        val sc15: Schedule
+        val sc16: Schedule
+        val sc17: Schedule //x
+        val sc18: Schedule //x
+        val sc19: Schedule //x
+        val sc20: Schedule //x
+        val sc21: Schedule //x
+        val sc22: Schedule //x
+        val sc23: Schedule //x
+        val sc24: Schedule //x
+        val sc25: Schedule //x
+        val sc26: Schedule //x
+        val sc27: Schedule //x
+        val sc28: Schedule //x
+        val sc29: Schedule //x
+        val sc30: Schedule //x
+        val sc31: Schedule //x
+        val sc32: Schedule //x
 
         val t1= measureTime { sc1= Algo.assignToTimeslot(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t2= measureTime { sc2= Algo.largestDegreeFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t3= measureTime { sc3= Algo.largestEnrollmentFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t4= measureTime { sc4= Algo.largestWeightedDegreeFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t5= measureTime { sc5= Algo.largestSaturationDegreeFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t6= measureTime { sc6= Algo.largestSaturationWeightedDegreeFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t7= measureTime { sc7= Algo.largestSaturationEnrollmentFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t8= measureTime { sc8= Algo.largestSaturationDegreeFirstOrdered(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t9= measureTime { sc9= Algo.largestSaturationWeightedDegreeFirstOrdered(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t10= measureTime { sc10= Algo.largestSaturationEnrollmentFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t2= measureTime { sc2= Algo.laD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t3= measureTime { sc3= Algo.laE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t4= measureTime { sc4= Algo.laWD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t5= measureTime { sc5= Algo.laS_D(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t6= measureTime { sc6= Algo.laS_WD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t7= measureTime { sc7= Algo.laS_E(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t8= measureTime { sc8= Algo.laD_S_D(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t9= measureTime { sc9= Algo.laWD_S_WD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t10= measureTime { sc10= Algo.laS_E(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t11= measureTime { sc11= Algo.laWD_E(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t12= measureTime { sc12= Algo.laE_WD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t13= measureTime { sc13= Algo.laS_WD_E(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t14= measureTime { sc14= Algo.laS_E_WD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t15= measureTime { sc15= Algo.laE_WD_S_E_WD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t16= measureTime { sc16= Algo.laE_WD_S_E_WD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        //x
+        val t17= measureTime { sc17= Algo.laCE_S_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t18= measureTime { sc18= Algo.laWCD_S_WCD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t19= measureTime { sc19= Algo.laWCD_D_S_WCD_D(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t20= measureTime { sc20= Algo.laWCD_CE_S_WCD_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t21= measureTime { sc21= Algo.laWCD_S_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t22= measureTime { sc22= Algo.laWCD_CE_S_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t23= measureTime { sc23= Algo.laS_WCD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t24= measureTime { sc24= Algo.laS_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t25= measureTime { sc25= Algo.laS_WCD_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t26= measureTime { sc26= Algo.laWCD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t27= measureTime { sc27= Algo.laCE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t28= measureTime { sc28= Algo.laWCxD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t29= measureTime { sc29= Algo.laWCxD_S_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t30= measureTime { sc30= Algo.laWCxD_S_D(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t31= measureTime { sc31= Algo.laWCxD_S_WCD_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t32= measureTime { sc32= Algo.laWCxD_S_WCD_D(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
 /*
         val sc1= Algo.assignToTimeslot(courses, adjacencyMatrix).apply { tag.fileName = fileName }
         val sc2= Algo.largestDegreeFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName }
@@ -330,6 +442,29 @@ object Util {
         val penalty8= getPenalty(sc8, adjacencyMatrix, students.size)
         val penalty9= getPenalty(sc9, adjacencyMatrix, students.size)
         val penalty10= getPenalty(sc10, adjacencyMatrix, students.size)
+        val penalty11= getPenalty(sc11, adjacencyMatrix, students.size)
+        val penalty12= getPenalty(sc12, adjacencyMatrix, students.size)
+        val penalty13= getPenalty(sc13, adjacencyMatrix, students.size)
+        val penalty14= getPenalty(sc14, adjacencyMatrix, students.size)
+        val penalty15= getPenalty(sc15, adjacencyMatrix, students.size)
+        val penalty16= getPenalty(sc16, adjacencyMatrix, students.size)
+        //x
+        val penalty17= getPenalty(sc17, adjacencyMatrix, students.size)
+        val penalty18= getPenalty(sc18, adjacencyMatrix, students.size)
+        val penalty19= getPenalty(sc19, adjacencyMatrix, students.size)
+        val penalty20= getPenalty(sc20, adjacencyMatrix, students.size)
+        val penalty21= getPenalty(sc21, adjacencyMatrix, students.size)
+        val penalty22= getPenalty(sc22, adjacencyMatrix, students.size)
+        val penalty23= getPenalty(sc23, adjacencyMatrix, students.size)
+        val penalty24= getPenalty(sc24, adjacencyMatrix, students.size)
+        val penalty25= getPenalty(sc25, adjacencyMatrix, students.size)
+        val penalty26= getPenalty(sc26, adjacencyMatrix, students.size)
+        val penalty27= getPenalty(sc27, adjacencyMatrix, students.size)
+        val penalty28= getPenalty(sc28, adjacencyMatrix, students.size)
+        val penalty29= getPenalty(sc29, adjacencyMatrix, students.size)
+        val penalty30= getPenalty(sc30, adjacencyMatrix, students.size)
+        val penalty31= getPenalty(sc31, adjacencyMatrix, students.size)
+        val penalty32= getPenalty(sc32, adjacencyMatrix, students.size)
 // */
 /*
         val conflict1= checkConflicts(sc1, adjacencyMatrix)
@@ -344,105 +479,38 @@ object Util {
         val conflict10= checkConflicts(sc10, adjacencyMatrix)
  */
 
-        prin("\n\n ============ ${sc1.tag.algo} =============== \n")
-        if(printEachScheduleRes){
-            prin("Time table:")
-            prin(sc1)
-        }
-        prin("Timeslots= ${sc1.timeslotCount}")
-        prin("Penalty: $penalty1")
-        prin("Duration: $t1")
-//        prin("Conflict: $conflict1")
-
-        prin("\n\n ============ ${sc2.tag.algo} =============== \n")
-        if(printEachScheduleRes){
-            prin("Time table:")
-            prin(sc2)
-        }
-        prin("Timeslots= ${sc2.timeslotCount}")
-        prin("Penalty: $penalty2")
-        prin("Duration: $t2")
-//        prin("Conflict: $conflict2")
-
-        prin("\n\n ============ ${sc3.tag.algo} =============== \n")
-        if(printEachScheduleRes){
-            prin("Time table:")
-            prin(sc3)
-        }
-        prin("Timeslots= ${sc3.timeslotCount}")
-        prin("Penalty: $penalty3")
-        prin("Duration: $t3")
-//        prin("Conflict: $conflict3")
-
-        prin("\n\n ============ ${sc4.tag.algo} =============== \n")
-        if(printEachScheduleRes){
-            prin("Time table:")
-            prin(sc4)
-        }
-        prin("Timeslots= ${sc4.timeslotCount}")
-        prin("Penalty: $penalty4")
-        prin("Duration: $t4")
-//        prin("Conflict: $conflict4")
-
-        prin("\n\n ============ ${sc5.tag.algo} =============== \n")
-        if(printEachScheduleRes){
-            prin("Time table:")
-            prin(sc5)
-        }
-        prin("Timeslots= ${sc5.timeslotCount}")
-        prin("Penalty: $penalty5")
-        prin("Duration: $t5")
-//        prin("Conflict: $conflict5")
-
-        prin("\n\n ============ ${sc6.tag.algo} =============== \n")
-        if(printEachScheduleRes){
-            prin("Time table:")
-            prin(sc6)
-        }
-        prin("Timeslots= ${sc6.timeslotCount}")
-        prin("Penalty: $penalty6")
-        prin("Duration: $t6")
-//        prin("Conflict: $conflict6")
-
-        prin("\n\n ============ ${sc7.tag.algo} =============== \n")
-        if(printEachScheduleRes){
-            prin("Time table:")
-            prin(sc7)
-        }
-        prin("Timeslots= ${sc7.timeslotCount}")
-        prin("Penalty: $penalty7")
-        prin("Duration: $t7")
-//        prin("Conflict: $conflict7")
-///*
-        prin("\n\n ============ ${sc8.tag.algo} =============== \n")
-        if(printEachScheduleRes){
-            prin("Time table:")
-            prin(sc8)
-        }
-        prin("Timeslots= ${sc8.timeslotCount}")
-        prin("Penalty: $penalty8")
-        prin("Duration: $t8")
-//        prin("Conflict: $conflict8")
-
-        prin("\n\n ============ ${sc9.tag.algo} =============== \n")
-        if(printEachScheduleRes){
-            prin("Time table:")
-            prin(sc9)
-        }
-        prin("Timeslots= ${sc9.timeslotCount}")
-        prin("Penalty: $penalty9")
-        prin("Duration: $t9")
-//        prin("Conflict: $conflict9")
-
-        prin("\n\n ============ ${sc10.tag.algo} =============== \n")
-        if(printEachScheduleRes){
-            prin("Time table:")
-            prin(sc10)
-        }
-        prin("Timeslots= ${sc10.timeslotCount}")
-        prin("Penalty: $penalty10")
-        prin("Duration: $t10")
-//        prin("Conflict: $conflict10")
+        printRes(sc1, penalty1, t1, printEachScheduleRes)
+        printRes(sc2, penalty2, t2, printEachScheduleRes)
+        printRes(sc3, penalty3, t3, printEachScheduleRes)
+        printRes(sc4, penalty4, t4, printEachScheduleRes)
+        printRes(sc5, penalty5, t5, printEachScheduleRes)
+        printRes(sc6, penalty6, t6, printEachScheduleRes)
+        printRes(sc7, penalty7, t7, printEachScheduleRes)
+        printRes(sc8, penalty8, t8, printEachScheduleRes)
+        printRes(sc9, penalty9, t9, printEachScheduleRes)
+        printRes(sc10, penalty10, t10, printEachScheduleRes)
+        printRes(sc11, penalty11, t11, printEachScheduleRes)
+        printRes(sc12, penalty12, t12, printEachScheduleRes)
+        printRes(sc13, penalty13, t13, printEachScheduleRes)
+        printRes(sc14, penalty14, t14, printEachScheduleRes)
+        printRes(sc15, penalty15, t15, printEachScheduleRes)
+        printRes(sc16, penalty16, t16, printEachScheduleRes)
+        printRes(sc17, penalty17, t17, printEachScheduleRes)
+        printRes(sc18, penalty18, t18, printEachScheduleRes)
+        printRes(sc19, penalty19, t19, printEachScheduleRes)
+        printRes(sc20, penalty20, t20, printEachScheduleRes)
+        printRes(sc21, penalty21, t21, printEachScheduleRes)
+        printRes(sc22, penalty22, t22, printEachScheduleRes)
+        printRes(sc23, penalty23, t23, printEachScheduleRes)
+        printRes(sc24, penalty24, t24, printEachScheduleRes)
+        printRes(sc25, penalty25, t25, printEachScheduleRes)
+        printRes(sc26, penalty26, t26, printEachScheduleRes)
+        printRes(sc27, penalty27, t27, printEachScheduleRes)
+        printRes(sc28, penalty28, t28, printEachScheduleRes)
+        printRes(sc29, penalty29, t29, printEachScheduleRes)
+        printRes(sc30, penalty30, t30, printEachScheduleRes)
+        printRes(sc31, penalty31, t31, printEachScheduleRes)
+        printRes(sc32, penalty32, t32, printEachScheduleRes)
 // */
 /*
 //        Util.printFinalSol(fileName, sc1, sc2, sc3, sc4)
@@ -452,7 +520,12 @@ object Util {
  */
         return listOf(
             sc1 withTime t1, sc2 withTime t2, sc3 withTime t3, sc4 withTime t4, sc5 withTime t5,
-            sc6 withTime t6, sc7 withTime t7, sc8 withTime t8, sc9 withTime t9, sc10 withTime t10
+            sc6 withTime t6, sc7 withTime t7, sc8 withTime t8, sc9 withTime t9, sc10 withTime t10,
+            sc11 withTime t11, sc12 withTime t12, sc13 withTime t13, sc14 withTime t14, sc15 withTime t15,
+            sc16 withTime t16, sc17 withTime t17, sc18 withTime t18, sc19 withTime t19, sc20 withTime t20,
+            sc21 withTime t21, sc22 withTime t22, sc23 withTime t23, sc24 withTime t24, sc25 withTime t25,
+            sc26 withTime t26, sc27 withTime t27, sc28 withTime t28, sc29 withTime t29, sc30 withTime t30,
+            sc31 withTime t31, sc32 withTime t32,
         )
     }
 
@@ -460,9 +533,10 @@ object Util {
         runAndGetBestScheduling(Config.getFileNameIndex(fileName), maxTimeslot, printEachScheduleRes)
     fun runAndGetBestScheduling(nameIndex: Int, maxTimeslot: Int= 0,  printEachScheduleRes: Boolean = true): Pair<ScheduleTag, TestResult<Schedule>?> =
         runScheduling(nameIndex, printEachScheduleRes).let { list ->
-            return getLeastPenaltySchedule(*list.map { it.result }.toTypedArray(), maxTimeslot = maxTimeslot).let {
-                var testRes: TestResult<Schedule>?= null
-                (it.also { testRes= list.find { it2 -> it2.result == it } } ?: list.first().result).tag to testRes
+            return getLeastPenaltyAndTimeSchedule(*list.toTypedArray(), maxTimeslot = maxTimeslot).let {
+//                var testRes: TestResult<Schedule>?= null
+//                (it.also { testRes= list.find { it2 -> it2.result == it } } ?: list.first().result).tag to testRes
+                (it ?: list.first()).result.tag to it
             }
         }
 
@@ -488,12 +562,25 @@ object Util {
         for((i, entry) in map.iterator().withIndex()){
             val testResults= entry.value
             val maxTimeslot= Config.maxTimeslot[i]
-            res += getLeastPenaltySchedule(*testResults.map { it.result }.toTypedArray(), maxTimeslot = maxTimeslot).let {
-                var testRes: TestResult<Schedule>?= null
-                (it.also { testRes= testResults.find { it2 -> it2.result == it } } ?: testResults.first().result).tag to testRes
+            res += getLeastPenaltyAndTimeSchedule(*testResults.toTypedArray(), maxTimeslot = maxTimeslot).let {
+//                var testRes: TestResult<Schedule>?= null
+//                (it.also { testRes= testResults.find { it2 -> it2.result == it } } ?: testResults.first().result).tag to testRes
+                (it ?: testResults.first()).result.tag to it
             }
         }
         return res
+    }
+
+    @OptIn(ExperimentalTime::class)
+    fun printRes(sc: Schedule, penalty: Double, duration: Duration, printSchedule: Boolean= true){
+        prin("\n\n ============ ${sc.tag.algo} =============== \n")
+        if(printSchedule){
+            prin("Time table:")
+            prin(sc)
+        }
+        prin("Timeslots= ${sc.timeslotCount}")
+        prin("Penalty: $penalty")
+        prin("Duration: $duration")
     }
 
     fun checkConflicts(result: Map<String, List<TestResult<Schedule>>>, adjacencyMatrix: Array<IntArray>): Map<String, List<ScheduleConflict>>{
@@ -567,6 +654,65 @@ object Util {
             sc.assignments.size.toString(), false
         )
     }
+    fun saveExm(sc: Schedule, exmFile: File, withNaturalOrder: Boolean= true): Boolean{
+        exmFile.delete()
+        val itr= if(withNaturalOrder) sc.iterator() else {
+            val orderedList= sc.toMutableList()
+            orderedList.sortBy { it.first.id }
+            orderedList.iterator()
+        }
+        var (course, _) = itr.next()
+        if(
+            !FileUtil.saveln(
+                exmFile,
+                "${course.id} ${course.studentCount}",
+                false
+            )
+        ) return false
+
+        while(itr.hasNext()) {
+//        for((course, timeslot) in sc){
+            val next= itr.next()
+            course= next.first
+//            timeslot= next.second
+            if(
+                !FileUtil.saveln(
+//                    FileUtil.getAvailableFile(solFile),
+                    exmFile,
+                    "${course.id} ${course.studentCount}",
+                    true
+                )
+            ) return false
+        }
+        return true
+    }
+    fun saveSln(slnFile: File): Boolean {
+        slnFile.delete()
+        val itr= Config.fileNames.iterator()
+        var fileName = itr.next()
+        if(
+            !FileUtil.saveln(
+                slnFile,
+                fileName,
+                false
+            )
+        ) return false
+
+        while(itr.hasNext()) {
+//        for((course, timeslot) in sc){
+            fileName= itr.next()
+//            timeslot= next.second
+            if(
+                !FileUtil.saveln(
+//                    FileUtil.getAvailableFile(solFile),
+                    slnFile,
+                    fileName,
+                    true
+                )
+            ) return false
+        }
+        return true
+    }
 
     fun saveFinalSol(fileName: String, vararg scs: Schedule, maxTimeslot: Int = 0, withNaturalOrder: Boolean= true): Boolean{
         val sc= getLeastPenaltySchedule(*scs, maxTimeslot = maxTimeslot) ?: return false
@@ -591,15 +737,21 @@ object Util {
                 val fileDir= Config.getFileDir(nameIndex)
                 val solDir= "$fileDir$FILE_EXTENSION_SOLUTION"
                 val resDir= "$fileDir$FILE_EXTENSION_RES"
+                val exmDir= "$fileDir$FILE_EXTENSION_EXM"
                 val solFile= File(solDir)
                 val resFile= File(resDir)
+                val exmFile= File(exmDir)
                 val sc= res.result
-                bool= bool && saveSol(sc, solFile, withNaturalOrder) && saveRes(sc, resFile)
+                bool= bool && saveSol(sc, solFile, withNaturalOrder) && saveRes(sc, resFile) && saveExm(sc, exmFile, false)
             } else {
                 prinw("Dataset $fileName tidak memiliki solusi")
             }
         }
-        return bool
+
+        val slnDir= "$DATASET_DIR/all$FILE_EXTENSION_SLN"
+        val slnFile= File(slnDir)
+
+        return bool && saveSln(slnFile)
     }
 // */
 
@@ -616,12 +768,12 @@ object Util {
         val itr= map.iterator()
 
         var (fileName, list) = itr.next()
-        var header= "file_name;"
+        var header= "'file_name';"
         var penaltyRowStr= "'$fileName';"
         var timeslotRowStr= "'$fileName';"
         var timeRowStr= "'$fileName';"
         list.forEach { (schedule, durr) ->
-            header += "${schedule.tag.algo.code};"
+            header += "'${schedule.tag.algo.code}';"
             penaltyRowStr += "'${schedule.penalty}';"
             timeslotRowStr += "'${schedule.timeslotCount}';"
             timeRowStr += "'$durr';"

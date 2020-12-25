@@ -10,7 +10,7 @@ import sidev.lib.collection.joinToString
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 
-data class Course(val id: Int, val studentCount: Int, var degree: Int = 0){
+data class Course(val id: Int, var studentCount: Int, var degree: Int = 0, var conflictingStudentCount: Int = 0){
     override fun toString(): String = "C$id"
 }
 data class Student(val id: Int, val courses: List<Int>){

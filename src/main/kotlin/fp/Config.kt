@@ -22,6 +22,8 @@ object Config {
     const val FILE_EXTENSION_COURSE = ".crs"
     const val FILE_EXTENSION_SOLUTION = ".sol"
     const val FILE_EXTENSION_RES = ".res"
+    const val FILE_EXTENSION_EXM = ".exm"
+    const val FILE_EXTENSION_SLN = ".sln"
 
     /**
      * Dijamin hasil return lebih besar dari -1.
