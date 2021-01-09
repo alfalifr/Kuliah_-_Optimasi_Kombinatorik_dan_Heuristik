@@ -19,5 +19,7 @@ dependencies {
 
     implementation("sidev.lib.kotlin:KtStdLib-jvm:0.0.1x.11112020")
     implementation("sidev.lib.kotlin:KtMath-jvm:0.0.1x")
+    implementation("sidev.lib.kotlin:KtAsync-jvm:0.0.1x")
+    implementation("sidev.lib.kotlin:KtReflex-jvm:0.0.1x")
     implementation("sidev.lib.jvm:JvmStdLib:0.0.1xx")
 }

@@ -4,8 +4,8 @@ import fp.Config.COURSE_INDEX_OFFSET
 import sidev.lib.collection.fastSortedWith
 //import fp.Algo.Component
 
-enum class Algo(val code: String, vararg val component: Component) {
-    UNSORTED("n0"),
+enum class Construct(val code: String, vararg val component: Component) {
+    UNSORTED("_0"),
     LaD("LaD", Component.DEGREE),
     LaE("LaE", Component.ENROLLMENT),
     X_LaCE("LaCE", Component.COMMON_ENROLLMENT),
@@ -62,7 +62,7 @@ enum class Algo(val code: String, vararg val component: Component) {
             courses.sortedByDescending { it.degree },
             adjacencyMatrix,
             availableTimeslot
-        ).apply { tag.algo = LaD }
+        ).apply { tag.construct = LaD }
 
         /**
          * [courses] merupakan List dg isi [Course.studentCount] dan [Course.degree] yang udah diisikan.
@@ -75,7 +75,7 @@ enum class Algo(val code: String, vararg val component: Component) {
             courses.sortedByDescending { it.degree * it.studentCount },
             adjacencyMatrix,
             availableTimeslot
-        ).apply { tag.algo = LaWD }
+        ).apply { tag.construct = LaWD }
 
         /**
          * [courses] merupakan List dg isi [Course.studentCount] dan [Course.degree] yang udah diisikan.
@@ -88,7 +88,7 @@ enum class Algo(val code: String, vararg val component: Component) {
             courses.sortedByDescending { it.degree * it.conflictingStudentCount },
             adjacencyMatrix,
             availableTimeslot
-        ).apply { tag.algo = X_LaWCD }
+        ).apply { tag.construct = X_LaWCD }
 
         /**
          * [courses] merupakan List dg isi [Course.studentCount] dan [Course.degree] yang udah diisikan.
@@ -101,7 +101,7 @@ enum class Algo(val code: String, vararg val component: Component) {
             courses.sortedByDescending { it.degree * it.conflictingStudentCount * it.studentCount },
             adjacencyMatrix,
             availableTimeslot
-        ).apply { tag.algo = X_LaWCxD }
+        ).apply { tag.construct = X_LaWCxD }
 
         /**
          * [courses] merupakan List dg isi [Course.studentCount] yang udah diisikan.
@@ -114,7 +114,7 @@ enum class Algo(val code: String, vararg val component: Component) {
             courses.sortedByDescending { it.studentCount },
             adjacencyMatrix,
             availableTimeslot
-        ).apply { tag.algo = LaE }
+        ).apply { tag.construct = LaE }
 
         /**
          * [courses] merupakan List dg isi [Course.studentCount] yang udah diisikan.
@@ -127,7 +127,7 @@ enum class Algo(val code: String, vararg val component: Component) {
             courses.sortedByDescending { it.conflictingStudentCount },
             adjacencyMatrix,
             availableTimeslot
-        ).apply { tag.algo = X_LaCE }
+        ).apply { tag.construct = X_LaCE }
 
         /**
          * [courses] merupakan List dg isi [Course.studentCount] dan [Course.degree] yang udah diisikan.
@@ -145,7 +145,7 @@ enum class Algo(val code: String, vararg val component: Component) {
             },
             adjacencyMatrix,
             availableTimeslot
-        ).apply { tag.algo = LaWD_E }
+        ).apply { tag.construct = LaWD_E }
 
         /**
          * [courses] merupakan List dg isi [Course.studentCount] dan [Course.degree] yang udah diisikan.
@@ -163,7 +163,7 @@ enum class Algo(val code: String, vararg val component: Component) {
             },
             adjacencyMatrix,
             availableTimeslot
-        ).apply { tag.algo = LaE_WD }
+        ).apply { tag.construct = LaE_WD }
 
         /**
          * Memasangkan [courses] ke [availableTimeslot] jika ada.
@@ -254,7 +254,7 @@ enum class Algo(val code: String, vararg val component: Component) {
         ): Schedule = laS_D(
             courses.sortedByDescending { it.degree },
             adjacencyMatrix, availableTimeslot
-        ).apply { tag.algo= LaD_S_D }
+        ).apply { tag.construct= LaD_S_D }
 
         fun laS_D(
             courses: List<Course>,
@@ -262,7 +262,7 @@ enum class Algo(val code: String, vararg val component: Component) {
             availableTimeslot: List<Timeslot>? = null
         ): Schedule = laS(courses, adjacencyMatrix, availableTimeslot) { acc, c ->
             acc.degree < c.degree
-        }.apply { tag.algo= LaS_D }
+        }.apply { tag.construct= LaS_D }
 
 
         fun laWD_S_WD(
@@ -272,7 +272,7 @@ enum class Algo(val code: String, vararg val component: Component) {
         ): Schedule = laS_WD(
             courses.sortedByDescending { it.degree * it.studentCount },
             adjacencyMatrix, availableTimeslot
-        ).apply { tag.algo= LaWD_S_WD }
+        ).apply { tag.construct= LaWD_S_WD }
 
         fun laS_WD(
             courses: List<Course>,
@@ -280,7 +280,7 @@ enum class Algo(val code: String, vararg val component: Component) {
             availableTimeslot: List<Timeslot>? = null
         ): Schedule = laS(courses, adjacencyMatrix, availableTimeslot) { acc, c ->
             acc.degree * acc.studentCount < c.degree * c.studentCount
-        }.apply { tag.algo= LaS_WD }
+        }.apply { tag.construct= LaS_WD }
 
 
         fun laWD_E_S_WD_E(
@@ -295,7 +295,7 @@ enum class Algo(val code: String, vararg val component: Component) {
                 else n1.studentCount.compareTo(n2.studentCount)
             }, //.sortedByDescending { it.degree * it.studentCount },
             adjacencyMatrix, availableTimeslot
-        ).apply { tag.algo= LaWD_E_S_WD_E }
+        ).apply { tag.construct= LaWD_E_S_WD_E }
 
         fun laS_WD_E(
             courses: List<Course>,
@@ -305,7 +305,7 @@ enum class Algo(val code: String, vararg val component: Component) {
             val wdAcc= acc.degree * acc.studentCount
             val wdC= c.degree * c.studentCount
             wdAcc < wdC || acc.studentCount < c.studentCount
-        }.apply { tag.algo= LaS_WD_E }
+        }.apply { tag.construct= LaS_WD_E }
 
 
         fun laE_WD_S_E_WD(
@@ -320,7 +320,7 @@ enum class Algo(val code: String, vararg val component: Component) {
                 else wd1.compareTo(wd2)
             }, //.sortedByDescending { it.degree * it.studentCount },
             adjacencyMatrix, availableTimeslot
-        ).apply { tag.algo= LaE_WD_S_E_WD }
+        ).apply { tag.construct= LaE_WD_S_E_WD }
 
         fun laS_E_WD(
             courses: List<Course>,
@@ -330,7 +330,7 @@ enum class Algo(val code: String, vararg val component: Component) {
             val wdAcc= acc.degree * acc.studentCount
             val wdC= c.degree * c.studentCount
             acc.studentCount < c.studentCount || wdAcc < wdC
-        }.apply { tag.algo= LaS_E_WD }
+        }.apply { tag.construct= LaS_E_WD }
 
 
         fun laE_S_E(
@@ -340,7 +340,7 @@ enum class Algo(val code: String, vararg val component: Component) {
         ): Schedule = laS_E(
             courses.sortedByDescending { it.studentCount },
             adjacencyMatrix, availableTimeslot
-        ).apply { tag.algo= LaE_S_E }
+        ).apply { tag.construct= LaE_S_E }
 
         fun laS_E(
             courses: List<Course>,
@@ -348,7 +348,7 @@ enum class Algo(val code: String, vararg val component: Component) {
             availableTimeslot: List<Timeslot>? = null
         ): Schedule = laS(courses, adjacencyMatrix, availableTimeslot) { acc, c ->
             acc.studentCount < c.studentCount
-        }.apply { tag.algo= LaS_E }
+        }.apply { tag.construct= LaS_E }
 
 
         fun laCE_S_CE(
@@ -358,7 +358,7 @@ enum class Algo(val code: String, vararg val component: Component) {
         ): Schedule = laS_CE(
             courses.sortedByDescending { it.conflictingStudentCount },
             adjacencyMatrix, availableTimeslot
-        ).apply { tag.algo= X_LaCE_S_CE }
+        ).apply { tag.construct= X_LaCE_S_CE }
 
         fun laS_CE(
             courses: List<Course>,
@@ -366,7 +366,7 @@ enum class Algo(val code: String, vararg val component: Component) {
             availableTimeslot: List<Timeslot>? = null
         ): Schedule = laS(courses, adjacencyMatrix, availableTimeslot) { acc, c ->
             acc.conflictingStudentCount < c.conflictingStudentCount
-        }.apply { tag.algo= X_LaS_CE }
+        }.apply { tag.construct= X_LaS_CE }
 
 
         fun laWCD_S_WCD(
@@ -376,7 +376,7 @@ enum class Algo(val code: String, vararg val component: Component) {
         ): Schedule = laS_WCD(
             courses.sortedByDescending { it.degree * it.conflictingStudentCount },
             adjacencyMatrix, availableTimeslot
-        ).apply { tag.algo= X_LaWCD_S_WCD }
+        ).apply { tag.construct= X_LaWCD_S_WCD }
 
         fun laWCD_S_CE(
             courses: List<Course>,
@@ -385,7 +385,7 @@ enum class Algo(val code: String, vararg val component: Component) {
         ): Schedule = laS_CE(
             courses.sortedByDescending { it.degree * it.conflictingStudentCount },
             adjacencyMatrix, availableTimeslot
-        ).apply { tag.algo= X_LaWCD_S_CE }
+        ).apply { tag.construct= X_LaWCD_S_CE }
 
         fun laWCxD_S_CE(
             courses: List<Course>,
@@ -394,7 +394,7 @@ enum class Algo(val code: String, vararg val component: Component) {
         ): Schedule = laS_CE(
             courses.sortedByDescending { it.degree * it.conflictingStudentCount * it.studentCount },
             adjacencyMatrix, availableTimeslot
-        ).apply { tag.algo= X_LaWCxD_S_CE }
+        ).apply { tag.construct= X_LaWCxD_S_CE }
 
         fun laWCxD_S_D(
             courses: List<Course>,
@@ -403,7 +403,7 @@ enum class Algo(val code: String, vararg val component: Component) {
         ): Schedule = laS_D(
             courses.sortedByDescending { it.degree * it.conflictingStudentCount * it.studentCount },
             adjacencyMatrix, availableTimeslot
-        ).apply { tag.algo= X_LaWCxD_S_D }
+        ).apply { tag.construct= X_LaWCxD_S_D }
 
         fun laWCxD_S_WCD_CE(
             courses: List<Course>,
@@ -412,7 +412,7 @@ enum class Algo(val code: String, vararg val component: Component) {
         ): Schedule = laS_WCD_CE(
             courses.sortedByDescending { it.degree * it.conflictingStudentCount * it.studentCount },
             adjacencyMatrix, availableTimeslot
-        ).apply { tag.algo= X_LaWCxD_S_WCD_CE }
+        ).apply { tag.construct= X_LaWCxD_S_WCD_CE }
 
         fun laWCxD_S_WCD_D(
             courses: List<Course>,
@@ -421,7 +421,7 @@ enum class Algo(val code: String, vararg val component: Component) {
         ): Schedule = laS_WCD_D(
             courses.sortedByDescending { it.degree * it.conflictingStudentCount * it.studentCount },
             adjacencyMatrix, availableTimeslot
-        ).apply { tag.algo= X_LaWCxD_S_WCD_D }
+        ).apply { tag.construct= X_LaWCxD_S_WCD_D }
 
         fun laWCD_CE_S_CE(
             courses: List<Course>,
@@ -435,7 +435,7 @@ enum class Algo(val code: String, vararg val component: Component) {
                 else n1.conflictingStudentCount.compareTo(n2.conflictingStudentCount)
             },
             adjacencyMatrix, availableTimeslot
-        ).apply { tag.algo= X_LaWCD_CE_S_CE }
+        ).apply { tag.construct= X_LaWCD_CE_S_CE }
 
         fun laS_WCD(
             courses: List<Course>,
@@ -443,7 +443,7 @@ enum class Algo(val code: String, vararg val component: Component) {
             availableTimeslot: List<Timeslot>? = null
         ): Schedule = laS(courses, adjacencyMatrix, availableTimeslot) { acc, c ->
             acc.degree * acc.conflictingStudentCount < c.degree * c.conflictingStudentCount
-        }.apply { tag.algo= X_LaS_WCD }
+        }.apply { tag.construct= X_LaS_WCD }
 
 
         fun laWCD_D_S_WCD_D(
@@ -458,7 +458,7 @@ enum class Algo(val code: String, vararg val component: Component) {
                 else n1.degree.compareTo(n2.degree)
             },
             adjacencyMatrix, availableTimeslot
-        ).apply { tag.algo= X_LaWCD_D_S_WCD_D }
+        ).apply { tag.construct= X_LaWCD_D_S_WCD_D }
 
         fun laS_WCD_D(
             courses: List<Course>,
@@ -468,7 +468,7 @@ enum class Algo(val code: String, vararg val component: Component) {
             val wcd1= acc.degree * acc.conflictingStudentCount
             val wcd2= c.degree * c.conflictingStudentCount
             wcd1 < wcd2 || acc.degree < c.degree
-        }.apply { tag.algo= X_LaS_WCD_D }
+        }.apply { tag.construct= X_LaS_WCD_D }
 
 
         fun laWCD_CE_S_WCD_CE(
@@ -483,7 +483,7 @@ enum class Algo(val code: String, vararg val component: Component) {
                 else n1.conflictingStudentCount.compareTo(n2.conflictingStudentCount)
             },
             adjacencyMatrix, availableTimeslot
-        ).apply { tag.algo= X_LaWCD_CE_S_WCD_CE }
+        ).apply { tag.construct= X_LaWCD_CE_S_WCD_CE }
 
         fun laS_WCD_CE(
             courses: List<Course>,
@@ -493,7 +493,7 @@ enum class Algo(val code: String, vararg val component: Component) {
             val wcd1= acc.degree * acc.conflictingStudentCount
             val wcd2= c.degree * c.conflictingStudentCount
             wcd1 < wcd2 || acc.conflictingStudentCount < c.conflictingStudentCount
-        }.apply { tag.algo= X_LaS_WCD_CE }
+        }.apply { tag.construct= X_LaS_WCD_CE }
 
         /**
          * [courses] merupakan List dg isi [Course.studentCount] dan [Course.degree] yang udah diisikan.

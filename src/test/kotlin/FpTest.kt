@@ -5,11 +5,15 @@ import fp.Config.FILE_EXTENSION_RES
 import fp.Config.FILE_EXTENSION_SOLUTION
 import fp.Config.FILE_EXTENSION_STUDENT
 import org.junit.Test
+import sidev.lib.check.isNull
 import sidev.lib.collection.copy
 import sidev.lib.collection.forEachIndexed
 import sidev.lib.console.prin
 import sidev.lib.console.prine
+import sidev.lib.console.prinw
 import java.io.File
+import kotlin.time.ExperimentalTime
+import kotlin.time.measureTime
 
 class FpTest {
     @Test
@@ -64,11 +68,11 @@ class FpTest {
         prin("======== adjacencyMatrix2 - Selesai ==========")
 
 
-        val sc1= Algo.assignToTimeslot(courses, adjacencyMatrix1)
-        val sc2= Algo.assignToTimeslot(courses, adjacencyMatrix2)
-        val scLDF= Algo.laD(coursesWithDegree, adjacencyMatrix2)
-        val scLSCF= Algo.laE(courses, adjacencyMatrix2)
-        val scLSDF= Algo.laS_D(coursesWithDegree, adjacencyMatrix2)
+        val sc1= Construct.assignToTimeslot(courses, adjacencyMatrix1)
+        val sc2= Construct.assignToTimeslot(courses, adjacencyMatrix2)
+        val scLDF= Construct.laD(coursesWithDegree, adjacencyMatrix2)
+        val scLSCF= Construct.laE(courses, adjacencyMatrix2)
+        val scLSDF= Construct.laS_D(coursesWithDegree, adjacencyMatrix2)
 
         prin(sc1)
         prin(sc2)
@@ -104,7 +108,7 @@ class FpTest {
         val adjacencyMatrix= Util.createCourseAdjacencyMatrix_Raw(courses.size, students)
 //        val adjacencyMatrix= Util.createCourseAdjacencyMatrix_Raw(courses.size, students)
 
-        val sc1= Algo.assignToTimeslot(courses, adjacencyMatrix)
+        val sc1= Construct.assignToTimeslot(courses, adjacencyMatrix)
         val penalty= Util.getPenalty(sc1, adjacencyMatrix, students.size)
 
         prin(sc1)
@@ -161,28 +165,28 @@ class FpTest {
 
 //        val adjacencyMatrix= Util.createCourseAdjacencyMatrix_Raw(courses.size, students)
 
-        val sc1= Algo.assignToTimeslot(courses, adjacencyMatrix).apply { tag.fileName = fileName }
+        val sc1= Construct.assignToTimeslot(courses, adjacencyMatrix).apply { tag.fileName = fileName }
         val penalty1= Util.getPenalty(sc1, adjacencyMatrix, students.size)
         prin("\n\n ============ First Order =============== \n")
         prin("Time table:")
         prin(sc1)
         prin("Penalty: $penalty1")
 
-        val sc2= Algo.laD(courses, adjacencyMatrix).apply { tag.fileName = fileName }
+        val sc2= Construct.laD(courses, adjacencyMatrix).apply { tag.fileName = fileName }
         val penalty2= Util.getPenalty(sc2, adjacencyMatrix, students.size)
         prin("\n\n ============ Largest Degree First =============== \n")
         prin("Time table:")
         prin(sc2)
         prin("Penalty: $penalty2")
 
-        val sc3= Algo.laE(courses, adjacencyMatrix).apply { tag.fileName = fileName }
+        val sc3= Construct.laE(courses, adjacencyMatrix).apply { tag.fileName = fileName }
         val penalty3= Util.getPenalty(sc3, adjacencyMatrix, students.size)
         prin("\n\n ============ Largest Enrollment First =============== \n")
         prin("Time table:")
         prin(sc3)
         prin("Penalty: $penalty3")
 
-        val sc4= Algo.laWD(courses, adjacencyMatrix).apply { tag.fileName = fileName }
+        val sc4= Construct.laWD(courses, adjacencyMatrix).apply { tag.fileName = fileName }
         val penalty4= Util.getPenalty(sc4, adjacencyMatrix, students.size)
         prin("\n\n ============ Largest Weighted Degree First =============== \n")
         prin("Time table:")
@@ -192,7 +196,7 @@ class FpTest {
 
         prin("courses akhir= $courses")
 
-        val sc5= Algo.laS_D(courses, adjacencyMatrix).apply { tag.fileName = fileName }
+        val sc5= Construct.laS_D(courses, adjacencyMatrix).apply { tag.fileName = fileName }
         val penalty5= Util.getPenalty(sc5, adjacencyMatrix, students.size)
         prin("\n\n ============ Largest Saturated Degree First =============== \n")
         prin("Time table:")
@@ -292,7 +296,7 @@ class FpTest {
         val cour= Util.toListOfCourses(courses)
 
         val adj= Util.createCourseAdjacencyMatrix(courses.size, studs)
-        val sc= Algo.assignToTimeslot(cour, adj)
+        val sc= Construct.assignToTimeslot(cour, adj)
         val penalty= Util.getPenalty(sc, adj, studs.size)
 
 /*
@@ -341,7 +345,8 @@ class FpTest {
 
     @Test
     fun realAssignmentTest_5(){
-        val results= Util.runAllScheduling()
+        val adjMatContainer = mutableMapOf<String, Array<IntArray>>()
+        val results= Util.runAllScheduling(adjMatContainer)
         prin("\n")
         val bestSchedulings= Util.getBestSchedulings(results)
 
@@ -354,5 +359,128 @@ class FpTest {
  */
         Util.saveAllResult(results)
         Util.saveFinalSol(bestSchedulings)
+    }
+
+    @ExperimentalTime
+    @Test
+    fun realAssignmentTest_6(){
+        val fileIndex= 9
+        val fileName= Config.fileNames[fileIndex]
+        val maxTimeslot= Config.maxTimeslot[fileIndex]
+        val adjMatContainer = mutableMapOf<String, Array<IntArray>>()
+        val studCountContainer = mutableMapOf<String, Int>()
+        val result= Util.runScheduling(fileIndex, false, adjMatContainer, studCountContainer)
+        val (bestSch, bestDurr)= Util.getLeastPenaltyAndTimeSchedule(*result.toTypedArray(), maxTimeslot = maxTimeslot)!!
+
+        val adjMat= adjMatContainer[fileName]!!
+        val studCount= studCountContainer[fileName]!!
+
+        val initPenalty= Util.getPenalty(bestSch, adjMat, studCount)
+
+        prin("\n")
+        prin("================ Melakukan Optimasi ===================")
+        val opt1: Pair<Schedule, Double>?
+        val opt2: Pair<Schedule, Double>?
+
+        prin("================ Optimasi - hc_swap ===================")
+        val t1= measureTime { opt1= Optimize.swap_hillClimbing(bestSch, adjMat, studCount, 1_000_000) }
+        prin("================ Optimasi - hc_move ===================")
+        val t2= measureTime { opt2= Optimize.move_hillClimbing(bestSch, adjMat, studCount, 1_000_000) }
+
+        prin("\n\n\n=============== Scheduling _ ${bestSch.miniString()} _ duration= $bestDurr _ initPenalty= $initPenalty ==========")
+        opt1?.also { (optSch, optPenalty) ->
+            prin("============== Hasil optimasi _ optSch= ${optSch.miniString()} _ optPenalty= ${optPenalty} durr= $t1 ==============")
+        }.isNull {
+            prinw("============== Hasil optimasi _ Tidak ada durr= $t1 ==============")
+        }
+        opt2?.also { (optSch, optPenalty) ->
+            prin("============== Hasil optimasi _ optSch= ${optSch.miniString()} _ optPenalty= ${optPenalty} durr= $t2 ==============")
+        }.isNull {
+            prinw("============== Hasil optimasi _ Tidak ada durr= $t2 ==============")
+        }
+        val betterSch= when{
+            opt1 == null -> opt2
+            opt2 == null -> opt1
+            else -> if(opt1.first.penalty <= opt2.first.penalty) opt1 else opt2
+        }
+        if(betterSch != null){
+            val file= File(Config.getFileDir(fileIndex) +"_opt_hc.sol")
+            Util.saveSol(betterSch.first, file)
+        }
+    }
+
+    @ExperimentalTime
+    @Test
+    fun realAssignmentTest_car91(){
+        val fileIndex= 1
+        val fileName= Config.fileNames[fileIndex]
+        val maxTimeslot= Config.maxTimeslot[fileIndex]
+        val adjMatContainer = mutableMapOf<String, Array<IntArray>>()
+        val studCountContainer = mutableMapOf<String, Int>()
+        val result= Util.runScheduling(fileIndex, false, adjMatContainer, studCountContainer)
+        val (bestSch, bestDurr)= Util.getLeastPenaltyAndTimeSchedule(*result.toTypedArray(), maxTimeslot = maxTimeslot)!!
+
+        val adjMat= adjMatContainer[fileName]!!
+        val studCount= studCountContainer[fileName]!!
+
+        val initPenalty= Util.getPenalty(bestSch, adjMat, studCount)
+
+        prin("\n")
+        prin("\n\n\n=============== Scheduling _ ${bestSch.miniString()} _ duration= $bestDurr _ initPenalty= $initPenalty ==========")
+/*
+        prin("================ Melakukan Optimasi ===================")
+        val opt1: Pair<Schedule, Double>?
+        val opt2: Pair<Schedule, Double>?
+
+        prin("================ Optimasi - hc_swap ===================")
+        val t1= measureTime { opt1= Optimize.swap_hillClimbing(bestSch, adjMat, studCount) }
+        prin("================ Optimasi - hc_move ===================")
+        val t2= measureTime { opt2= Optimize.move_hillClimbing(bestSch, adjMat, studCount) }
+
+        prin("\n\n\n=============== Scheduling _ ${bestSch.miniString()} _ duration= $bestDurr _ initPenalty= $initPenalty ==========")
+        opt1?.also { (optSch, optPenalty) ->
+            prin("============== Hasil optimasi _ optSch= ${optSch.miniString()} _ optPenalty= ${optPenalty} durr= $t1 ==============")
+        }.isNull {
+            prinw("============== Hasil optimasi _ Tidak ada durr= $t1 ==============")
+        }
+        opt2?.also { (optSch, optPenalty) ->
+            prin("============== Hasil optimasi _ optSch= ${optSch.miniString()} _ optPenalty= ${optPenalty} durr= $t2 ==============")
+        }.isNull {
+            prinw("============== Hasil optimasi _ Tidak ada durr= $t2 ==============")
+        }
+ */
+    }
+
+    @Test
+    fun courseIdTest(){
+        val c1= Course(1, 10)
+        prin(c1.hashCode().hashCode())
+        val map= HashMap<Course, Int>()
+        map[c1]= 120
+        prin(map[c1])
+        prin(map[1])
+        prin(map[Course(1, 391721826)])
+
+        prin(Course(1, 9237193) == c1)
+        prin(c1.equals(1))
+    }
+    @Test
+    fun moveCourseTest(){
+        val t1= Timeslot(1)
+        val t2= Timeslot(2)
+        val c1= Course(1, 10)
+        val c2= Course(2, 11)
+        val c3= Course(3, 14)
+
+        val ls1= mutableListOf(c1)
+        val ls2= mutableListOf(c3, c2)
+
+        val map= mutableMapOf(t1 to ls1, t2 to ls2,)
+        val sch= Schedule(map)
+
+        prin(sch)
+        prin("======== after move ===========")
+        sch.moveById(3, 1)
+        prin(sch)
     }
 }

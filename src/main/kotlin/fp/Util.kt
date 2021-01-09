@@ -9,6 +9,7 @@ import fp.Config.FILE_EXTENSION_RES
 import fp.Config.FILE_EXTENSION_SLN
 import fp.Config.FILE_EXTENSION_SOLUTION
 import fp.Config.FILE_EXTENSION_STUDENT
+import sidev.lib.`val`.SuppressLiteral
 import sidev.lib.collection.array.forEachIndexed
 import sidev.lib.collection.forEachIndexed
 import sidev.lib.console.prin
@@ -209,14 +210,121 @@ object Util {
         }
     }
 
-    //w0=16, w1=8, w2=4, w3=2 and w4=1 -> Berdasarkan di FP.
-    //Penalti msh berdasarkan rumus di UAS.
-    /**
-     * Menghitung penalty yang dihasilkan oleh [schedule].
-     * Penalty yang bagus adalah penalty yang lebih rendah.
-     */
-    fun getPenalty(schedule: Schedule, courseAdjacencyMatrix: Array<IntArray>, studentCount: Int): Double {
+    fun getPairDistanceMatrix(
+        schedule: Schedule,
+        courseAdjacencyMatrix: Array<IntArray>,
+    ): Array<Array<Pair<Int, Int>>> {
+        val res= Array(courseAdjacencyMatrix.size) {
+            arrayOfNulls<Pair<Int, Int>>(courseAdjacencyMatrix.size)
+        }
+        for((i, row) in courseAdjacencyMatrix.withIndex()){
+            val t1= schedule.getCourseTimeslot(i + COURSE_INDEX_OFFSET)!!.no
+            for(u in i+1 until row.size){
+                val t2= schedule.getCourseTimeslot(u + COURSE_INDEX_OFFSET)!!.no
+                res[i][u]= t1 to t2
+                res[u][i]= t2 to t1
+            }
+        }
+        @Suppress(SuppressLiteral.UNCHECKED_CAST)
+        return res as Array<Array<Pair<Int, Int>>>
+    }
+
+    fun getFullDistanceMatrix(
+        schedule: Schedule,
+        courseAdjacencyMatrix: Array<IntArray>,
+    ): DistanceMatrix {
+        val res= Array(courseAdjacencyMatrix.size) {
+            arrayOfNulls<Pair<Int, Int>>(courseAdjacencyMatrix.size)
+        }
+        for((i, row) in courseAdjacencyMatrix.withIndex()){
+            val t1= schedule.getCourseTimeslot(i + COURSE_INDEX_OFFSET)!!.no
+            for(u in i+1 until row.size){
+                val t2= schedule.getCourseTimeslot(u + COURSE_INDEX_OFFSET)!!.no
+                res[i][u]= t1 to t2
+                res[u][i]= t2 to t1
+            }
+        }
+        @Suppress(SuppressLiteral.UNCHECKED_CAST)
+        return DistanceMatrix(
+            res as Array<Array<Pair<Int, Int>>>,
+            Array(courseAdjacencyMatrix.size){ courseAdjacencyMatrix[it].copyOf() }
+        )
+    }
+
+    fun getDistanceMatrix(
+        schedule: Schedule,
+        courseAdjacencyMatrix: Array<IntArray>,
+    ): Array<IntArray> {
+        val res= Array(courseAdjacencyMatrix.size) { IntArray(courseAdjacencyMatrix.size) }
+        for((i, row) in courseAdjacencyMatrix.withIndex()){
+            val t1= schedule.getCourseTimeslot(i + COURSE_INDEX_OFFSET)!!.no
+            for(u in i+1 until row.size){
+                val t2= schedule.getCourseTimeslot(u + COURSE_INDEX_OFFSET)!!.no
+                res[i][u]= (t1 - t2).absoluteValue
+            }
+        }
+        return res
+    }
+
+    fun getDistanceAndConflictMatrix(
+        schedule: Schedule,
+        courseAdjacencyMatrix: Array<IntArray>,
+    ): Array<Array<Pair<Int, Int>>> {
+        val res= Array(courseAdjacencyMatrix.size) {
+            arrayOfNulls<Pair<Int, Int>>(courseAdjacencyMatrix.size)
+        }
+        for((i, row) in courseAdjacencyMatrix.withIndex()){
+            val t1= schedule.getCourseTimeslot(i + COURSE_INDEX_OFFSET)!!.no
+            for(u in i+1 until row.size){
+                val conflict= courseAdjacencyMatrix[i][u]
+                if(conflict < 1) continue
+                val t2= schedule.getCourseTimeslot(u + COURSE_INDEX_OFFSET)!!.no
+                val distance= (t1 - t2).absoluteValue
+                res[i][u]= conflict to distance
+            }
+        }
+        @Suppress(SuppressLiteral.UNCHECKED_CAST)
+        return res as Array<Array<Pair<Int, Int>>>
+    }
+
+    fun getPenaltyComponentAt(
+        courseId: Int,
+        courseAdjacencyMatrix: Array<IntArray>,
+        schedule: Schedule?= null,
+        timeslotGetter: ((courseId: Int) -> Int)?= null,
+    ): Double {
         var sum= 0.0
+        val t1= if(schedule != null) schedule.getCourseTimeslot(courseId)!!.no
+            else timeslotGetter!!(courseId)
+        val weightRange= 0.0 .. 4.0 //1.0 .. 5.0
+        val courseIndex= courseId - COURSE_INDEX_OFFSET
+        val t2Getter= if(schedule != null) { it: Int -> schedule.getCourseTimeslot(it)!!.no }
+            else timeslotGetter!!
+        val courseNeighbors= courseAdjacencyMatrix[courseIndex]
+        for(u in courseNeighbors.indices){
+            val t2= t2Getter(u + COURSE_INDEX_OFFSET) //schedule.getCourseTimeslot(u + COURSE_INDEX_OFFSET)!!
+            val conflict= courseNeighbors[u].toDouble()
+            if(conflict == 0.0) continue
+            val timeslotDistance= (t1 - t2).absoluteValue.toDouble()
+            val weight= if(timeslotDistance in weightRange){
+                (2 pow (4 - timeslotDistance)).toDouble()
+            } else 0.0
+            sum += conflict * weight
+        }
+        return sum
+    }
+
+    /**
+     * Menghitung komponen penalty untuk tiap course terhadap course lainnya secara tunggal.
+     * Tiap cell dalam [Array<DoubleArray>] merupakan hasil dari conflict * weight.
+     */
+    fun getPenaltyComponent(
+        schedule: Schedule,
+        courseAdjacencyMatrix: Array<IntArray>,
+        //studentCount: Int
+    ): Array<DoubleArray> {
+        //var sum= 0.0
+        val resArray= Array(courseAdjacencyMatrix.size){ DoubleArray(courseAdjacencyMatrix.size) }
         val weightRange= 0.0 .. 4.0 //1.0 .. 5.0
         for((i, row) in courseAdjacencyMatrix.withIndex()){
             val t1= schedule.getCourseTimeslot(i + COURSE_INDEX_OFFSET)!!
@@ -225,6 +333,59 @@ object Util {
                 val conflict= courseAdjacencyMatrix[i][u].toDouble()
                 if(conflict == 0.0) continue
                 val timeslotDistance= (t1.no - t2.no).absoluteValue.toDouble()
+
+                val weight= if(timeslotDistance in weightRange){
+//                    (2 pow (5 - timeslotDistance)).toDouble()
+                    (2 pow (4 - timeslotDistance)).toDouble()
+                } else 0.0
+
+                resArray[i][u]= conflict * weight
+            }
+        }
+        return resArray
+    }
+    //w0=16, w1=8, w2=4, w3=2 and w4=1 -> Berdasarkan di FP.
+    //Penalti msh berdasarkan rumus di UAS.
+    /**
+     * Menghitung penalty yang dihasilkan oleh [schedule].
+     * Penalty yang bagus adalah penalty yang lebih rendah.
+     */
+    fun getPenalty(schedule: Schedule, courseAdjacencyMatrix: Array<IntArray>, studentCount: Int): Double {
+        var sum= 0.0
+        val weightRange= 0 .. 4 //1.0 .. 5.0
+        val weightRangeLast= weightRange.last
+        for((i, row) in courseAdjacencyMatrix.withIndex()){
+            val t1= schedule.getCourseTimeslot(i + COURSE_INDEX_OFFSET)!!
+            for(u in i+1 until row.size){
+                //val c2Id= u + COURSE_INDEX_OFFSET
+                val t2= schedule.getCourseTimeslot(u + COURSE_INDEX_OFFSET)!!
+                val conflict= courseAdjacencyMatrix[i][u] //.toDouble()
+                if(conflict < 1) continue
+                val timeslotDistance= (t1.no - t2.no).absoluteValue
+
+                val weight= if(timeslotDistance in weightRange){
+//                    (2 pow (5 - timeslotDistance)).toDouble()
+                    (2 pow (weightRangeLast - timeslotDistance)).toDouble()
+                } else 0.0
+
+                //sum += weight * schedule.getCourse(c2Id)!!.studentCount / studentCount //conflict * weight / studentCount
+                sum += conflict * weight
+            }
+        }
+        return (sum / studentCount).also { //(sum / 2)
+            schedule.penalty= it
+        }
+    }
+    fun getPenalty(schedule: FlatSchedule, courseAdjacencyMatrix: Array<IntArray>, studentCount: Int): Double {
+        var sum= 0.0
+        val weightRange= 0.0 .. 4.0 //1.0 .. 5.0
+        for((i, row) in courseAdjacencyMatrix.withIndex()){
+            val t1= schedule.getCourseTimeslot(i + COURSE_INDEX_OFFSET)
+            for(u in i+1 until row.size){
+                val t2= schedule.getCourseTimeslot(u + COURSE_INDEX_OFFSET)
+                val conflict= courseAdjacencyMatrix[i][u].toDouble()
+                if(conflict == 0.0) continue
+                val timeslotDistance= (t1 - t2).absoluteValue.toDouble()
 
                 val weight= if(timeslotDistance in weightRange){
 //                    (2 pow (5 - timeslotDistance)).toDouble()
@@ -292,7 +453,11 @@ object Util {
         runScheduling(Config.getFileNameIndex(fileName), printEachScheduleRes)
 
     @OptIn(ExperimentalTime::class)
-    fun runScheduling(nameIndex: Int, printEachScheduleRes: Boolean = true): List<TestResult<Schedule>> {
+    fun runScheduling(
+        nameIndex: Int, printEachScheduleRes: Boolean = true,
+        adjMatContainer: MutableMap<String, Array<IntArray>>?= null,
+        studentCountContainer: MutableMap<String, Int>?= null,
+    ): List<TestResult<Schedule>> {
 //        val fileName= "hec-s-92" //"pur-s-93"
 //        val maxTimeslot= 18 //42
 //        val nameIndex= Config.getFileNameIndex(fileName) //Scanner(System.`in`).next().toInt()
@@ -325,6 +490,9 @@ object Util {
 
         val adjacencyMatrix= createCourseAdjacencyMatrix_Raw(courses, students)
         val density= getDensity(adjacencyMatrix)
+
+        studentCountContainer?.put(fileName, students.size)
+        adjMatContainer?.put(fileName, adjacencyMatrix)
 
 //        courseAdjacencyMatrix= adjacencyMatrix
 
@@ -378,39 +546,39 @@ object Util {
         val sc31: Schedule //x
         val sc32: Schedule //x
 
-        val t1= measureTime { sc1= Algo.assignToTimeslot(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t2= measureTime { sc2= Algo.laD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t3= measureTime { sc3= Algo.laE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t4= measureTime { sc4= Algo.laWD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t5= measureTime { sc5= Algo.laS_D(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t6= measureTime { sc6= Algo.laS_WD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t7= measureTime { sc7= Algo.laS_E(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t8= measureTime { sc8= Algo.laD_S_D(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t9= measureTime { sc9= Algo.laWD_S_WD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t10= measureTime { sc10= Algo.laS_E(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t11= measureTime { sc11= Algo.laWD_E(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t12= measureTime { sc12= Algo.laE_WD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t13= measureTime { sc13= Algo.laS_WD_E(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t14= measureTime { sc14= Algo.laS_E_WD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t15= measureTime { sc15= Algo.laE_WD_S_E_WD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t16= measureTime { sc16= Algo.laE_WD_S_E_WD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t1= measureTime { sc1= Construct.assignToTimeslot(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t2= measureTime { sc2= Construct.laD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t3= measureTime { sc3= Construct.laE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t4= measureTime { sc4= Construct.laWD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t5= measureTime { sc5= Construct.laS_D(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t6= measureTime { sc6= Construct.laS_WD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t7= measureTime { sc7= Construct.laS_E(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t8= measureTime { sc8= Construct.laD_S_D(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t9= measureTime { sc9= Construct.laWD_S_WD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t10= measureTime { sc10= Construct.laS_E(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t11= measureTime { sc11= Construct.laWD_E(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t12= measureTime { sc12= Construct.laE_WD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t13= measureTime { sc13= Construct.laS_WD_E(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t14= measureTime { sc14= Construct.laS_E_WD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t15= measureTime { sc15= Construct.laE_WD_S_E_WD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t16= measureTime { sc16= Construct.laE_WD_S_E_WD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
         //x
-        val t17= measureTime { sc17= Algo.laCE_S_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t18= measureTime { sc18= Algo.laWCD_S_WCD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t19= measureTime { sc19= Algo.laWCD_D_S_WCD_D(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t20= measureTime { sc20= Algo.laWCD_CE_S_WCD_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t21= measureTime { sc21= Algo.laWCD_S_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t22= measureTime { sc22= Algo.laWCD_CE_S_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t23= measureTime { sc23= Algo.laS_WCD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t24= measureTime { sc24= Algo.laS_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t25= measureTime { sc25= Algo.laS_WCD_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t26= measureTime { sc26= Algo.laWCD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t27= measureTime { sc27= Algo.laCE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t28= measureTime { sc28= Algo.laWCxD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t29= measureTime { sc29= Algo.laWCxD_S_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t30= measureTime { sc30= Algo.laWCxD_S_D(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t31= measureTime { sc31= Algo.laWCxD_S_WCD_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
-        val t32= measureTime { sc32= Algo.laWCxD_S_WCD_D(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t17= measureTime { sc17= Construct.laCE_S_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t18= measureTime { sc18= Construct.laWCD_S_WCD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t19= measureTime { sc19= Construct.laWCD_D_S_WCD_D(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t20= measureTime { sc20= Construct.laWCD_CE_S_WCD_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t21= measureTime { sc21= Construct.laWCD_S_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t22= measureTime { sc22= Construct.laWCD_CE_S_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t23= measureTime { sc23= Construct.laS_WCD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t24= measureTime { sc24= Construct.laS_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t25= measureTime { sc25= Construct.laS_WCD_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t26= measureTime { sc26= Construct.laWCD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t27= measureTime { sc27= Construct.laCE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t28= measureTime { sc28= Construct.laWCxD(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t29= measureTime { sc29= Construct.laWCxD_S_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t30= measureTime { sc30= Construct.laWCxD_S_D(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t31= measureTime { sc31= Construct.laWCxD_S_WCD_CE(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
+        val t32= measureTime { sc32= Construct.laWCxD_S_WCD_D(courses, adjacencyMatrix).apply { tag.fileName = fileName } }
 /*
         val sc1= Algo.assignToTimeslot(courses, adjacencyMatrix).apply { tag.fileName = fileName }
         val sc2= Algo.largestDegreeFirst(courses, adjacencyMatrix).apply { tag.fileName = fileName }
@@ -540,10 +708,13 @@ object Util {
             }
         }
 
-    fun runAllScheduling(): Map<String, List<TestResult<Schedule>>>{
+    fun runAllScheduling(
+        adjMatContainer: MutableMap<String, Array<IntArray>>?= null,
+        studentCountContainer: MutableMap<String, Int>?= null,
+    ): Map<String, List<TestResult<Schedule>>>{
         val res= mutableMapOf<String, List<TestResult<Schedule>>>()
         for((i, fileName) in Config.fileNames.withIndex()){
-            res[fileName]= runScheduling(i, false) //Config.maxTimeslot[i],
+            res[fileName]= runScheduling(i, false, adjMatContainer, studentCountContainer) //Config.maxTimeslot[i],
         }
         return res
     }
@@ -573,7 +744,7 @@ object Util {
 
     @OptIn(ExperimentalTime::class)
     fun printRes(sc: Schedule, penalty: Double, duration: Duration, printSchedule: Boolean= true){
-        prin("\n\n ============ ${sc.tag.algo} =============== \n")
+        prin("\n\n ============ ${sc.tag.construct} =============== \n")
         if(printSchedule){
             prin("Time table:")
             prin(sc)
@@ -613,6 +784,60 @@ object Util {
         }
         return ScheduleConflict(sc, list)
     }
+
+/*
+    fun checkConflictInTimeslot(schedule: Schedule, timeslotNo: Int, adjacencyMatrix: Array<IntArray>): Boolean {
+        val assign= schedule.getAssignmentAssert(timeslotNo)
+        val courses= assign.courses
+        for((i, c1) in courses.withIndex()){
+            for(u in i+1 until courses.size){
+                val c2= courses[u]
+                if(adjacencyMatrix[c1.id - COURSE_INDEX_OFFSET][c2.id - COURSE_INDEX_OFFSET] > 0)
+                    return false
+            }
+        }
+        return true
+    }
+    fun checkConflictInTimeslot(
+        courses: List<Course>,
+        course: Course,
+        adjacencyMatrix: Array<IntArray>
+    ): Boolean {
+        for(c1 in courses){
+            if(adjacencyMatrix[course.id - COURSE_INDEX_OFFSET][c1.id - COURSE_INDEX_OFFSET] > 0)
+                return false
+        }
+        return true
+    }
+    fun checkConflictInSameTimeslot(schedule: Schedule, course: Course, adjacencyMatrix: Array<IntArray>): Boolean {
+        val assign= schedule.assignments.find { it.value.any { it.id == course.id } }
+            ?: throw IllegalArgExc(
+                paramExcepted = arrayOf("course"),
+                detailMsg = "Course ($course) tidak terdapat pada schedule ini."
+            )
+        val courses= assign.value
+        return checkConflictInTimeslot(courses, course, adjacencyMatrix)
+    }
+    fun checkConflictInSameTimeslot(
+        schedule: Schedule,
+        timeslotNo: Int,
+        courseOrder: Int,
+        adjacencyMatrix: Array<IntArray>
+    ): Boolean {
+        val assign= schedule.assignments.find { it.key.no == timeslotNo }
+            ?: throw IllegalArgExc(
+                paramExcepted = arrayOf("timeslotNo"),
+                detailMsg = "Timeslot ($timeslotNo) tidak terdapat pada schedule ini."
+            )
+        val course= assign.value.find { it.id == courseOrder }
+            ?: throw IllegalArgExc(
+                paramExcepted = arrayOf("courseOrder"),
+                detailMsg = "Course ($courseOrder) tidak terdapat pada schedule ini."
+            )
+        val courses= assign.value
+        return checkConflictInTimeslot(courses, course, adjacencyMatrix)
+    }
+ */
 
     fun saveSol(sc: Schedule, solFile: File, withNaturalOrder: Boolean= true): Boolean {
         solFile.delete()
@@ -773,7 +998,7 @@ object Util {
         var timeslotRowStr= "'$fileName';"
         var timeRowStr= "'$fileName';"
         list.forEach { (schedule, durr) ->
-            header += "'${schedule.tag.algo.code}';"
+            header += "'${schedule.tag.construct.code}';"
             penaltyRowStr += "'${schedule.penalty}';"
             timeslotRowStr += "'${schedule.timeslotCount}';"
             timeRowStr += "'$durr';"
