@@ -26,6 +26,9 @@ object Config {
     const val FILE_EXTENSION_EXM = ".exm"
     const val FILE_EXTENSION_SLN = ".sln"
 
+    const val DEFAULT_TEMPERATURE_INIT = 30.0
+    const val DEFAULT_DECAY_RATE = 0.23
+
     /**
      * Dijamin hasil return lebih besar dari -1.
      */
