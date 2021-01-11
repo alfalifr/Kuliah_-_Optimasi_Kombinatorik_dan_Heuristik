@@ -385,6 +385,10 @@ class FpTest {
         val opt4: Pair<Schedule, Double>?
         val opt5: Pair<Schedule, Double>?
         val opt6: Pair<Schedule, Double>?
+        val opt7: Pair<Schedule, Double>?
+        val opt8: Pair<Schedule, Double>?
+        val opt9: Pair<Schedule, Double>?
+        val opt10: Pair<Schedule, Double>?
 
         val optList= mutableListOf<TestResult<Schedule>>()
 
@@ -399,10 +403,21 @@ class FpTest {
         val t4= measureTime { opt4= Optimize.moveN_hillClimbing(bestSch, adjMat, studCount, n, 1_000_000) }
         prin("================ Optimasi - hc_swapN n=$n ===================")
         val t5= measureTime { opt5= Optimize.swapN_hillClimbing(bestSch, adjMat, studCount, n, 1_000_000) }
-        prin("================ Optimasi - sm_moveN n=$n ===================")
-        val temp= Config.DEFAULT_TEMPERATURE_INIT
-        val decayRate= Config.DEFAULT_DECAY_RATE
+        prin("================ Optimasi - sa_moveN n=$n ===================")
+        val temp= 43.0
+        val decayRate= 0.02
         val t6= measureTime { opt6= Optimize.moveN_simulatedAnnealing(bestSch, adjMat, studCount, n, temp, decayRate, 1_000_000) }
+        prin("================ Optimasi - sa_swapN n=$n ===================")
+        val t7= measureTime { opt7= Optimize.swapN_simulatedAnnealing(bestSch, adjMat, studCount, n, temp, decayRate, 1_000_000) }
+        prin("================ Optimasi - gd_moveN n=$n ===================")
+        val t8= measureTime { opt8= Optimize.moveN_greatDeluge(bestSch, adjMat, studCount, n, decayRate = decayRate, iterations = 1_000_000) }
+        prin("================ Optimasi - gd_swapN n=$n ===================")
+        val t9= measureTime { opt9= Optimize.swapN_greatDeluge(bestSch, adjMat, studCount, n, decayRate = decayRate, iterations = 1_000_000) }
+        prin("================ Optimasi - hyper maxN=$n ===================")
+        val t10= measureTime {
+            val optAlgo= Optimize.HighLevel.SELECTION(n, Optimize.Evaluation.SIMULATED_ANNEALING(temp, decayRate))
+            opt10= optAlgo.optimize(bestSch, adjMat, studCount, 1_000_000)
+        }
 
         prin("\n\n\n=============== Scheduling _ ${bestSch.miniString()} _ duration= $bestDurr _ initPenalty= $initPenalty ==========")
         opt1?.also { (optSch, optPenalty) ->
@@ -446,6 +461,34 @@ class FpTest {
             val conflict= Util.checkConflicts(optSch, adjMat)
             prin("============== Hasil optimasi _ optSch= ${optSch.miniString()} _ optPenalty= ${optPenalty} durr= $t6 conflict=$conflict ==============")
             optList += TestResult(optSch, t6)
+        }.isNull {
+            prinw("============== Hasil optimasi _ Tidak ada durr= $t2 ==============")
+        }
+        opt7?.also { (optSch, optPenalty) ->
+            val conflict= Util.checkConflicts(optSch, adjMat)
+            prin("============== Hasil optimasi _ optSch= ${optSch.miniString()} _ optPenalty= ${optPenalty} durr= $t7 conflict=$conflict ==============")
+            optList += TestResult(optSch, t7)
+        }.isNull {
+            prinw("============== Hasil optimasi _ Tidak ada durr= $t2 ==============")
+        }
+        opt8?.also { (optSch, optPenalty) ->
+            val conflict= Util.checkConflicts(optSch, adjMat)
+            prin("============== Hasil optimasi _ optSch= ${optSch.miniString()} _ optPenalty= ${optPenalty} durr= $t8 conflict=$conflict ==============")
+            optList += TestResult(optSch, t8)
+        }.isNull {
+            prinw("============== Hasil optimasi _ Tidak ada durr= $t2 ==============")
+        }
+        opt9?.also { (optSch, optPenalty) ->
+            val conflict= Util.checkConflicts(optSch, adjMat)
+            prin("============== Hasil optimasi _ optSch= ${optSch.miniString()} _ optPenalty= ${optPenalty} durr= $t9 conflict=$conflict ==============")
+            optList += TestResult(optSch, t9)
+        }.isNull {
+            prinw("============== Hasil optimasi _ Tidak ada durr= $t2 ==============")
+        }
+        opt10?.also { (optSch, optPenalty) ->
+            val conflict= Util.checkConflicts(optSch, adjMat)
+            prin("============== Hasil optimasi _ optSch= ${optSch.miniString()} _ optPenalty= ${optPenalty} durr= $t10 conflict=$conflict ==============")
+            optList += TestResult(optSch, t10)
         }.isNull {
             prinw("============== Hasil optimasi _ Tidak ada durr= $t2 ==============")
         }

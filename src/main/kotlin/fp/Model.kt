@@ -66,7 +66,7 @@ data class DistanceMatrix(
             val destItr= newDestPositions?.iterator()
             var destPair= if(destItr?.hasNext() == true) destItr.next() else null
             var destPairId= destPair?.id?.minus(COURSE_INDEX_OFFSET) ?: -1
-            val srcPos= if(newSrcPosition > 0) newSrcPosition
+            val srcPos= if(newSrcPosition >= 0) newSrcPosition
                 else positionMatrix[index][0].first
             val distRangeLast= distanceRange.last
             for(i in adjacencyMatrix.indices){
