@@ -260,7 +260,7 @@ data class Schedule(
         }
         return true
     }
-
+    /*
     fun move(fromTimeslot: Int, courseOrder: Int, toTimeslot: Int): Course {
         return getTimeslot(fromTimeslot)
             .isNull { throw IllegalArgExc(paramExcepted=arrayOf("fromTimeslot"), detailMsg="Param `fromTimeslot` ($fromTimeslot) tidak terdapat pada schedule ini.") }
@@ -272,14 +272,17 @@ data class Schedule(
                 course
             }!!
     }
+     */
     fun moveById(courseId: Int, toTimeslot: Int): Course {
         var movedCourse: Course?= null
         var movedCourseIndex= -1
+        var movedCourseTimeslotI= -1
 //        var courses: MutableList<Course>?= null
-        val fromCourses= assignments.find { courses_ ->
+        val fromCourses= assignments.findIndexed { i, courses_ ->
             courses_.value.findIndexed { it.value.id == courseId }.notNullTo {
                 movedCourseIndex= it.index
                 movedCourse= it.value
+                movedCourseTimeslotI= i
                 true
             } ?: false
         }!!.value
@@ -290,16 +293,19 @@ data class Schedule(
 
         toCourses += movedCourse!!
         fromCourses.removeAt(movedCourseIndex)
+        if(fromCourses.isEmpty())
+            trimTimeslot(movedCourseTimeslotI)
         return movedCourse!!
     }
-
+    /*
     fun moveAny(fromTimeslot: Int, toTimeslot: Int): Course {
         return getTimeslot(fromTimeslot)
             .isNull { throw IllegalArgExc(paramExcepted=arrayOf("fromTimeslot"), detailMsg="Param `fromTimeslot` ($fromTimeslot) tidak terdapat pada schedule ini.") }
             .notNullTo {
                 val list = assignments[it]!!
                 val courseOrder = (0 until list.size).random()
-                list.removeAt(courseOrder)
+                val removed= list.removeAt(courseOrder)
+                removed
             }.notNullTo { course ->
                 getTimeslot(toTimeslot)
                     .isNull { throw IllegalArgExc(paramExcepted=arrayOf("toTimeslot"), detailMsg="Param `toTimeslot` ($toTimeslot) tidak terdapat pada schedule ini.") }
@@ -309,8 +315,10 @@ data class Schedule(
     }
 
     fun swapAny(fromTimeslot: Int, toTimeslot: Int): Pair<Course, Course> {
-        val fromTimeslot= getTimeslot(fromTimeslot) ?: throw IllegalArgExc(paramExcepted=arrayOf("fromTimeslot"), detailMsg="Param `fromTimeslot` ($fromTimeslot) tidak terdapat pada schedule ini.")
-        val toTimeslot= getTimeslot(toTimeslot) ?: throw IllegalArgExc(paramExcepted=arrayOf("toTimeslot"), detailMsg="Param `toTimeslot` ($toTimeslot) tidak terdapat pada schedule ini.")
+        @Suppress(SuppressLiteral.NAME_SHADOWING)
+        val fromTimeslot= getTimeslot(fromTimeslot) //?: throw IllegalArgExc(paramExcepted=arrayOf("fromTimeslot"), detailMsg="Param `fromTimeslot` ($fromTimeslot) tidak terdapat pada schedule ini.")
+        @Suppress(SuppressLiteral.NAME_SHADOWING)
+        val toTimeslot= getTimeslot(toTimeslot) //?: throw IllegalArgExc(paramExcepted=arrayOf("toTimeslot"), detailMsg="Param `toTimeslot` ($toTimeslot) tidak terdapat pada schedule ini.")
 
         val fromCourseList= assignments[fromTimeslot]!!
         val toCourseList= assignments[toTimeslot]!!
@@ -335,6 +343,7 @@ data class Schedule(
             }
          */
     }
+     */
 
     operator fun get(timeslot: Timeslot): MutableList<Course>? = assignments[timeslot]
     operator fun get(course: Course): Timeslot? = getCourseTimeslot(course.id)
@@ -364,6 +373,41 @@ data class Schedule(
         override fun next(): Pair<Course, Timeslot> = next!!
     }
  */
+
+
+    /**
+     * Menghapus timeslot yang kosong.
+     */
+    fun trimTimeslot(from: Int = 0): List<Timeslot> {
+        var destDiff= 0
+        val keys= mutableListOf<Timeslot>()
+        val coursesList= mutableListOf<MutableList<Course>>()
+        val removedList= mutableListOf<Timeslot>()
+        val entries= assignments.entries.toList()
+        for(i in from until assignments.size){
+            val e= entries[i]
+            keys += e.key
+            coursesList += e.value
+        }
+
+        for((i, c) in coursesList.withIndex()){
+            if(c.isEmpty())
+                destDiff++
+            else if(destDiff > 0)
+                assignments[keys[i-destDiff]]= c
+            //coursesList[i-destDiff]= c
+        }
+        if(destDiff > 0){
+            val lastIndex= coursesList.lastIndex
+            for(i in lastIndex downTo lastIndex - destDiff + 1){
+                //coursesList.removeLast()
+                val removedKey= keys[i]
+                assignments.remove(removedKey)
+                removedList += removedKey
+            }
+        }
+        return removedList
+    }
 
     override operator fun iterator(): Iterator<Pair<Course, Timeslot>> = object: Iterator<Pair<Course, Timeslot>> {
         val mapItr= assignments.iterator()

@@ -3,6 +3,7 @@ package fp
 import fp.Config.COURSE_INDEX_OFFSET
 import sidev.lib.`val`.SuppressLiteral
 import sidev.lib.console.prine
+import sidev.lib.exception.IllegalArgExc
 import sidev.lib.math.random.DistributedRandom
 import sidev.lib.math.random.distRandomOf
 import sidev.lib.math.random.randomBoolean
@@ -11,35 +12,45 @@ import sidev.lib.progression.range
 import kotlin.math.exp
 import kotlin.random.Random
 
+
 enum class Optimize(val code: String, vararg val lowLevels: LowLevel) {
     NOT_YET("_0"),
     HC_MOVE("hc_m", LowLevel.MOVE),
-//    HC_MOVE2("hc_m2", LowLevel.MOVE_2),
+    SA_MOVE("sa_m", LowLevel.MOVE),
+    GD_MOVE("gd_m", LowLevel.MOVE),
+    //    HC_MOVE2("hc_m2", LowLevel.MOVE_2),
     HC_MOVEn("hc_mN", LowLevel.MOVE_N.Default),
     SA_MOVEn("sa_mN", LowLevel.MOVE_N.Default),
     GD_MOVEn("gd_mN", LowLevel.MOVE_N.Default),
-/*
-    {
-        val n= 1
-        fun af(){}
-    },
- */
+    /*
+        {
+            val n= 1
+            fun af(){}
+        },
+     */
     HC_SWAP("hc_s", LowLevel.SWAP),
+    SA_SWAP("sa_s", LowLevel.SWAP),
+    GD_SWAP("GD_s", LowLevel.SWAP),
     HC_SWAPn("hc_sN", LowLevel.SWAP_N.Default),
     SA_SWAPn("sa_sN", LowLevel.SWAP_N.Default),
     GD_SWAPn("gd_sN", LowLevel.SWAP_N.Default),
-    Hyper("hyp"),
+    Hyper_HC("hyp_hc"),
     Hyper_SA("hyp_sa"),
+    Hyper_GD("hyp_gd")
     ;
-
     sealed class LowLevel(val code: String) {
         companion object {
             val all: List<LowLevel> by lazy { listOf(MOVE, SWAP, MOVE_N.Default, SWAP_N.Default) }
             fun getRandom(maxN: Int = 3): LowLevel {
+                if(maxN < 1)
+                    throw IllegalArgExc(
+                        paramExcepted = arrayOf("maxN"),
+                        detailMsg = "Param `maxN` ($maxN) < 1"
+                    )
                 val rand= all.random()
                 return when(rand){
-                    is MOVE_N -> MOVE_N((1..maxN).random())
-                    is SWAP_N -> SWAP_N((1..maxN).random())
+                    is MOVE_N -> if(maxN >= 2) MOVE_N((2..maxN).random()) else MOVE
+                    is SWAP_N -> if(maxN >= 2) SWAP_N((2..maxN).random()) else SWAP
                     else -> rand
                 }
             }
@@ -49,6 +60,9 @@ enum class Optimize(val code: String, vararg val lowLevels: LowLevel) {
         override fun toString(): String = this::class.simpleName!!
         operator fun invoke(i: Int, currentSchedule: Schedule, courseAdjacencyMatrix: Array<IntArray>): Array<CourseMove>? =
             calculate(i, currentSchedule, courseAdjacencyMatrix)
+
+        override fun equals(other: Any?): Boolean = other is LowLevel && toString() == other.toString()
+        override fun hashCode(): Int = toString().hashCode()
 
         object MOVE: LowLevel("m"){
             override fun calculate(
@@ -280,6 +294,8 @@ enum class Optimize(val code: String, vararg val lowLevels: LowLevel) {
 
     sealed class Evaluation {
         abstract fun evaluate(prevDistanceMatrix: DistanceMatrix, moves: Array<CourseMove>): Boolean
+        override fun toString(): String = this::class.simpleName!!
+
         object BETTER : Evaluation() {
             override fun evaluate(prevDistanceMatrix: DistanceMatrix, moves: Array<CourseMove>): Boolean {
                 val (prevPenaltySum, currentPenaltySum) = getPenaltySum(prevDistanceMatrix, moves)
@@ -361,7 +377,7 @@ enum class Optimize(val code: String, vararg val lowLevels: LowLevel) {
     }
 
     sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluation) {
-        private val lowLevelDist: DistributedRandom<LowLevel> = distRandomOf()
+        val lowLevelDist: DistributedRandom<LowLevel> = distRandomOf()
         //abstract fun calculate(i: Int, currentSchedule: Schedule, courseAdjacencyMatrix: Array<IntArray>): Array<CourseMove>?
         abstract fun optimize(
             init: Schedule,
@@ -369,9 +385,11 @@ enum class Optimize(val code: String, vararg val lowLevels: LowLevel) {
             studentCount: Int,
             iterations: Int = Config.DEFAULT_ITERATIONS
         ): Pair<Schedule, Double>?
+        abstract val optimizationTag: Optimize
+
         protected fun nextLowLevel(): LowLevel {
             return if(!lowLevelDist.isEmpty()
-                && randomBoolean(1 / (1- exp(Random.nextDouble() / lowLevelDist.distSum))) // Ada kemungkinan dapet lowLevel baru meskipun udah di assign yg lama.
+                && randomBoolean(1 / (1 + exp(1.0 / lowLevelDist.distSum))) // Ada kemungkinan dapet lowLevel baru meskipun udah di assign yg lama.
             ) lowLevelDist.next()
             else initLowLevel()
         }
@@ -383,6 +401,11 @@ enum class Optimize(val code: String, vararg val lowLevels: LowLevel) {
 
         class SELECTION(maxN: Int = 3, evaluation: Evaluation = Evaluation.BETTER)
             : HighLevel("sel", maxN, evaluation) {
+            override val optimizationTag: Optimize = when(evaluation){
+                Evaluation.BETTER -> Hyper_HC
+                is Evaluation.SIMULATED_ANNEALING -> Hyper_SA
+                is Evaluation.GREAT_DELUGE -> Hyper_GD
+            }
             override fun optimize(
                 init: Schedule,
                 courseAdjacencyMatrix: Array<IntArray>,
@@ -423,7 +446,76 @@ enum class Optimize(val code: String, vararg val lowLevels: LowLevel) {
                 //prine("Optimize initFinalPenalty= $initFinalPenalty")
                 return if(acceptRes) {
                     val finalPenalty= Util.getPenalty(sch, courseAdjacencyMatrix, studentCount)
-                    sch.apply { tag.optimization= Hyper } to finalPenalty
+                    sch.apply {
+                        trimTimeslot()
+                        tag.optimization= optimizationTag
+                    } to finalPenalty
+                } else null
+            }
+        }
+
+        class LINEAR(
+            val lowLevel: LowLevel,
+            //maxN: Int = 3, Gak penting karena udah ada [lowLevel].
+            evaluation: Evaluation = Evaluation.BETTER
+        ): HighLevel("lin", -1, evaluation){
+            override val optimizationTag: Optimize = when(evaluation){
+                Evaluation.BETTER -> when(lowLevel){
+                    LowLevel.MOVE -> HC_MOVE
+                    LowLevel.SWAP -> HC_SWAP
+                    is LowLevel.MOVE_N -> HC_MOVEn
+                    is LowLevel.SWAP_N -> HC_SWAPn
+                }
+                is Evaluation.SIMULATED_ANNEALING -> when(lowLevel){
+                    LowLevel.MOVE -> SA_MOVE
+                    LowLevel.SWAP -> SA_SWAP
+                    is LowLevel.MOVE_N -> SA_MOVEn
+                    is LowLevel.SWAP_N -> SA_SWAPn
+                }
+                is Evaluation.GREAT_DELUGE -> when(lowLevel){
+                    LowLevel.MOVE -> GD_MOVE
+                    LowLevel.SWAP -> GD_SWAP
+                    is LowLevel.MOVE_N -> GD_MOVEn
+                    is LowLevel.SWAP_N -> GD_SWAPn
+                }
+            }
+            override fun optimize(
+                init: Schedule,
+                courseAdjacencyMatrix: Array<IntArray>,
+                studentCount: Int,
+                iterations: Int
+            ): Pair<Schedule, Double>? {
+                //val initFlat= init.toFlat()
+                //val timeslotCount= init.timeslotCount
+                //initFlat.forEach { prine(it) }
+                //prine("initFlat.getCourseTimeslot(1)=${initFlat.getCourseTimeslot(1)}")
+                val resDistMat= Util.getFullDistanceMatrix(init, courseAdjacencyMatrix)
+                //var resPenalty= Util.getPenalty(init, courseAdjacencyMatrix, studentCount)
+                //var resSch: Schedule? = null
+                var acceptRes= false
+                val sch= init.clone_()
+                for(i in 0 until iterations) {
+                    //val sch= resSch?.clone_() ?: init.clone_()
+                    val moves= lowLevel(i, sch, courseAdjacencyMatrix)
+                    //val penalty= Util.getPenalty(sch, courseAdjacencyMatrix, studentCount)
+                    //prine("penaltyChange= $penaltyChange")
+                    if(moves != null && evaluation(resDistMat, moves)){
+                        for(move in moves){
+                            resDistMat.setPositionMatrix(move)
+                            sch.moveById(move.id, move.to)
+                        }
+                        acceptRes= true
+                        //prine("MASUK akhir= $resPenaltyComp")
+                    } //else { resPenalty.value= resPenalty.value }
+                }
+                //val initFinalPenalty= Util.getPenalty(init, courseAdjacencyMatrix, studentCount)
+                //prine("Optimize initFinalPenalty= $initFinalPenalty")
+                return if(acceptRes) {
+                    val finalPenalty= Util.getPenalty(sch, courseAdjacencyMatrix, studentCount)
+                    sch.apply {
+                        trimTimeslot()
+                        tag.optimization= optimizationTag
+                    } to finalPenalty
                 } else null
             }
         }
@@ -438,7 +530,7 @@ enum class Optimize(val code: String, vararg val lowLevels: LowLevel) {
         }
         private fun DoubleArray.penalty(studentCount: Int): Double = sum() / studentCount / 2
  */
-
+/*
         fun optimize(
             init: Schedule,
             courseAdjacencyMatrix: Array<IntArray>,
@@ -479,158 +571,131 @@ enum class Optimize(val code: String, vararg val lowLevels: LowLevel) {
                 sch to finalPenalty
             } else null
         }
+ */
 
-        fun move(
-            init: Schedule,
-            courseAdjacencyMatrix: Array<IntArray>,
-            studentCount: Int,
-            iterations: Int = Config.DEFAULT_ITERATIONS,
-            evaluation: Evaluation,
-        ): Pair<Schedule, Double>? = optimize(
-            init, courseAdjacencyMatrix, studentCount, iterations, evaluation,
-        ) { i, currentSchedule ->
-            LowLevel.MOVE(i, currentSchedule, courseAdjacencyMatrix)
-        }
-/*
-        fun move2(
-            init: Schedule,
-            courseAdjacencyMatrix: Array<IntArray>,
-            studentCount: Int,
-            iterations: Int = Config.DEFAULT_ITERATIONS,
-            evaluation: Evaluation,
-        ): Pair<Schedule, Double>? = optimize(
-            init, courseAdjacencyMatrix, studentCount, iterations, evaluation,
-        ) { i, currentSchedule ->
-            val range= 0 until currentSchedule.timeslotCount
+        /*
+                fun move2(
+                    init: Schedule,
+                    courseAdjacencyMatrix: Array<IntArray>,
+                    studentCount: Int,
+                    iterations: Int = Config.DEFAULT_ITERATIONS,
+                    evaluation: Evaluation,
+                ): Pair<Schedule, Double>? = optimize(
+                    init, courseAdjacencyMatrix, studentCount, iterations, evaluation,
+                ) { i, currentSchedule ->
+                    val range= 0 until currentSchedule.timeslotCount
 
-            var res: Array<CourseMove>?= null
-            var loop= true
-            var u= -1
-            while(loop){
-                if(++u >= 7) break
-                try {
-                    val fromTimeslotNo1= range.random()
-                    var toTimeslotNo1= fromTimeslotNo1 //range.random()
+                    var res: Array<CourseMove>?= null
+                    var loop= true
+                    var u= -1
+                    while(loop){
+                        if(++u >= 7) break
+                        try {
+                            val fromTimeslotNo1= range.random()
+                            var toTimeslotNo1= fromTimeslotNo1 //range.random()
 
-                    if(range.range > 0)
-                        while(toTimeslotNo1 == fromTimeslotNo1)
-                            toTimeslotNo1= range.random()
+                            if(range.range > 0)
+                                while(toTimeslotNo1 == fromTimeslotNo1)
+                                    toTimeslotNo1= range.random()
 
-                    var fromTimeslotNo2= fromTimeslotNo1 //range.random()
-                    var toTimeslotNo2= toTimeslotNo1 //range.random()
+                            var fromTimeslotNo2= fromTimeslotNo1 //range.random()
+                            var toTimeslotNo2= toTimeslotNo1 //range.random()
 
-                    if(range.range > 0)
-                        while(fromTimeslotNo2 == fromTimeslotNo1)
-                            fromTimeslotNo2= range.random()
+                            if(range.range > 0)
+                                while(fromTimeslotNo2 == fromTimeslotNo1)
+                                    fromTimeslotNo2= range.random()
 
-                    if(range.range > 0)
-                        while(toTimeslotNo2 == fromTimeslotNo2)
-                            toTimeslotNo2= range.random()
+                            if(range.range > 0)
+                                while(toTimeslotNo2 == fromTimeslotNo2)
+                                    toTimeslotNo2= range.random()
 
-                    val fromTimeslot1= currentSchedule.getTimeslot(fromTimeslotNo1)
-                    val fromTimeslot2= currentSchedule.getTimeslot(fromTimeslotNo2)
+                            val fromTimeslot1= currentSchedule.getTimeslot(fromTimeslotNo1)
+                            val fromTimeslot2= currentSchedule.getTimeslot(fromTimeslotNo2)
 
-                    val movedCourseId1= currentSchedule[fromTimeslot1]!!.random().id
-                    val movedCourseId2= currentSchedule[fromTimeslot2]!!.random().id
+                            val movedCourseId1= currentSchedule[fromTimeslot1]!!.random().id
+                            val movedCourseId2= currentSchedule[fromTimeslot2]!!.random().id
 
-                    res= if(currentSchedule.checkConflictInTimeslot(
-                            toTimeslotNo1, courseAdjacencyMatrix, courseId = movedCourseId1
-                        ) && currentSchedule.checkConflictInTimeslot(
-                            toTimeslotNo2, courseAdjacencyMatrix, courseId = movedCourseId2
-                        )) {
-                        //val penalty= Util.getPenaltyComponentAt(movedCourseId, courseAdjacencyMatrix, currentSchedule)
-                        arrayOf(
-                            CourseMove(movedCourseId1, fromTimeslotNo1, toTimeslotNo1),
-                            CourseMove(movedCourseId2, fromTimeslotNo2, toTimeslotNo2),
-                        )
-                    } else null
-                    loop= false
-                } catch(e: NoSuchElementException){
-                    // Abaikan
+                            res= if(currentSchedule.checkConflictInTimeslot(
+                                    toTimeslotNo1, courseAdjacencyMatrix, courseId = movedCourseId1
+                                ) && currentSchedule.checkConflictInTimeslot(
+                                    toTimeslotNo2, courseAdjacencyMatrix, courseId = movedCourseId2
+                                )) {
+                                //val penalty= Util.getPenaltyComponentAt(movedCourseId, courseAdjacencyMatrix, currentSchedule)
+                                arrayOf(
+                                    CourseMove(movedCourseId1, fromTimeslotNo1, toTimeslotNo1),
+                                    CourseMove(movedCourseId2, fromTimeslotNo2, toTimeslotNo2),
+                                )
+                            } else null
+                            loop= false
+                        } catch(e: NoSuchElementException){
+                            // Abaikan
+                        }
+                    }
+                    res
                 }
-            }
-            res
-        }
- */
+         */
+        fun lin_move(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            evaluation: Evaluation,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? = HighLevel.LINEAR(LowLevel.MOVE, evaluation).optimize(
+            init, courseAdjacencyMatrix, studentCount, iterations
+        )
 
-        fun moveN(
+        fun lin_moveN(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            n: Int,
+            evaluation: Evaluation,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? = HighLevel.LINEAR(LowLevel.MOVE_N(n), evaluation).optimize(
+            init, courseAdjacencyMatrix, studentCount, iterations
+        )
+
+        fun lin_swap(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            evaluation: Evaluation,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? = HighLevel.LINEAR(LowLevel.SWAP, evaluation).optimize(
+            init, courseAdjacencyMatrix, studentCount, iterations
+        )
+
+        fun lin_swapN(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            n: Int,
+            evaluation: Evaluation,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? = HighLevel.LINEAR(LowLevel.SWAP_N(n), evaluation).optimize(
+            init, courseAdjacencyMatrix, studentCount, iterations
+        )
+
+        fun lin_move_hc(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? = lin_move(
+            init, courseAdjacencyMatrix, studentCount, Evaluation.BETTER, iterations
+        )
+
+        fun lin_moveN_hc(
             init: Schedule,
             courseAdjacencyMatrix: Array<IntArray>,
             studentCount: Int,
             n: Int,
             iterations: Int = Config.DEFAULT_ITERATIONS,
-            evaluation: Evaluation,
-        ): Pair<Schedule, Double>? = LowLevel.MOVE_N(n).run {
-            optimize(
-                init, courseAdjacencyMatrix, studentCount, iterations, evaluation,
-            ) { i, currentSchedule ->
-                this(i, currentSchedule, courseAdjacencyMatrix)
-            }
-        }
+        ): Pair<Schedule, Double>? = lin_moveN(
+            init, courseAdjacencyMatrix, studentCount, n, Evaluation.BETTER, iterations
+        )
 
-        fun swap(
-            init: Schedule,
-            courseAdjacencyMatrix: Array<IntArray>,
-            studentCount: Int,
-            iterations: Int = Config.DEFAULT_ITERATIONS,
-            evaluation: Evaluation,
-        ): Pair<Schedule, Double>? = optimize(
-            init, courseAdjacencyMatrix, studentCount, iterations, evaluation,
-        ) { i, currentSchedule ->
-            LowLevel.SWAP(i, currentSchedule, courseAdjacencyMatrix)
-        }
-
-        fun swapN(
-            init: Schedule,
-            courseAdjacencyMatrix: Array<IntArray>,
-            studentCount: Int,
-            n: Int,
-            iterations: Int = Config.DEFAULT_ITERATIONS,
-            evaluation: Evaluation,
-        ): Pair<Schedule, Double>? = LowLevel.SWAP_N(n).run {
-            optimize(
-                init, courseAdjacencyMatrix, studentCount, iterations, evaluation,
-            ) { i, currentSchedule ->
-                this(i, currentSchedule, courseAdjacencyMatrix)
-            }
-        }
-
-        fun move_hillClimbing(
-            init: Schedule,
-            courseAdjacencyMatrix: Array<IntArray>,
-            studentCount: Int,
-            iterations: Int = Config.DEFAULT_ITERATIONS,
-        ): Pair<Schedule, Double>? = move(
-            init, courseAdjacencyMatrix, studentCount, iterations, Evaluation.BETTER
-        )?.apply {
-            first.tag.optimization= HC_MOVE
-        }
-/*
-        fun move2_hillClimbing(
-            init: Schedule,
-            courseAdjacencyMatrix: Array<IntArray>,
-            studentCount: Int,
-            iterations: Int = Config.DEFAULT_ITERATIONS,
-        ): Pair<Schedule, Double>? = move2(
-            init, courseAdjacencyMatrix, studentCount, iterations, Evaluation.BETTER
-        )?.apply {
-            first.tag.optimization= HC_MOVE2
-        }
- */
-
-        fun moveN_hillClimbing(
-            init: Schedule,
-            courseAdjacencyMatrix: Array<IntArray>,
-            studentCount: Int,
-            n: Int,
-            iterations: Int = Config.DEFAULT_ITERATIONS,
-        ): Pair<Schedule, Double>? = moveN(
-            init, courseAdjacencyMatrix, studentCount, n, iterations, Evaluation.BETTER
-        )?.apply {
-            first.tag.optimization= HC_MOVEn
-        }
-
-        fun moveN_simulatedAnnealing(
+        fun lin_moveN_sa(
             init: Schedule,
             courseAdjacencyMatrix: Array<IntArray>,
             studentCount: Int,
@@ -638,14 +703,13 @@ enum class Optimize(val code: String, vararg val lowLevels: LowLevel) {
             initTemperature: Double = Config.DEFAULT_TEMPERATURE_INIT,
             decayRate: Double = Config.DEFAULT_DECAY_RATE,
             iterations: Int = Config.DEFAULT_ITERATIONS,
-        ): Pair<Schedule, Double>? = moveN(
-            init, courseAdjacencyMatrix, studentCount, n, iterations,
-            Evaluation.SIMULATED_ANNEALING(initTemperature, decayRate)
-        )?.apply {
-            first.tag.optimization= SA_MOVEn
-        }
+        ): Pair<Schedule, Double>? = lin_moveN(
+            init, courseAdjacencyMatrix, studentCount, n,
+            Evaluation.SIMULATED_ANNEALING(initTemperature, decayRate),
+            iterations
+        )
 
-        fun moveN_greatDeluge(
+        fun lin_moveN_gd(
             init: Schedule,
             courseAdjacencyMatrix: Array<IntArray>,
             studentCount: Int,
@@ -659,38 +723,34 @@ enum class Optimize(val code: String, vararg val lowLevels: LowLevel) {
                 val initPenalty= Util.getPenalty(init, courseAdjacencyMatrix, studentCount)
                 initPenalty + initPenalty * Config.DEFAULT_LEVEL_INIT_PERCENTAGE
             }
-            return moveN(
-                init, courseAdjacencyMatrix, studentCount, n, iterations,
-                Evaluation.GREAT_DELUGE(initLevel, decayRate)
-            )?.apply {
-                first.tag.optimization= GD_MOVEn
-            }
+            return lin_moveN(
+                init, courseAdjacencyMatrix, studentCount, n,
+                Evaluation.GREAT_DELUGE(initLevel, decayRate),
+                iterations
+            )
         }
 
-        fun swap_hillClimbing(
+        fun lin_swap_hc(
             init: Schedule,
             courseAdjacencyMatrix: Array<IntArray>,
             studentCount: Int,
             iterations: Int = Config.DEFAULT_ITERATIONS,
-        ): Pair<Schedule, Double>? = swap(
-            init, courseAdjacencyMatrix, studentCount, iterations, Evaluation.BETTER
-        )?.apply {
-            first.tag.optimization= HC_SWAP
-        }
+        ): Pair<Schedule, Double>? = lin_swap(
+            init, courseAdjacencyMatrix, studentCount, Evaluation.BETTER, iterations
+        )
 
-        fun swapN_hillClimbing(
+        fun lin_swapN_hc(
             init: Schedule,
             courseAdjacencyMatrix: Array<IntArray>,
             studentCount: Int,
             n: Int,
             iterations: Int = Config.DEFAULT_ITERATIONS,
-        ): Pair<Schedule, Double>? = swapN(
-            init, courseAdjacencyMatrix, studentCount, n, iterations, Evaluation.BETTER
-        )?.apply {
-            first.tag.optimization= HC_SWAPn
-        }
+        ): Pair<Schedule, Double>? = lin_swapN(
+            init, courseAdjacencyMatrix, studentCount, n,
+            Evaluation.BETTER, iterations
+        )
 
-        fun swapN_simulatedAnnealing(
+        fun lin_swapN_sa(
             init: Schedule,
             courseAdjacencyMatrix: Array<IntArray>,
             studentCount: Int,
@@ -698,14 +758,13 @@ enum class Optimize(val code: String, vararg val lowLevels: LowLevel) {
             initTemperature: Double = Config.DEFAULT_TEMPERATURE_INIT,
             decayRate: Double = Config.DEFAULT_DECAY_RATE,
             iterations: Int = Config.DEFAULT_ITERATIONS,
-        ): Pair<Schedule, Double>? = swapN(
-            init, courseAdjacencyMatrix, studentCount, n, iterations,
-            Evaluation.SIMULATED_ANNEALING(initTemperature, decayRate)
-        )?.apply {
-            first.tag.optimization= SA_SWAPn
-        }
+        ): Pair<Schedule, Double>? = lin_swapN(
+            init, courseAdjacencyMatrix, studentCount, n,
+            Evaluation.SIMULATED_ANNEALING(initTemperature, decayRate),
+            iterations
+        )
 
-        fun swapN_greatDeluge(
+        fun lin_swapN_gd(
             init: Schedule,
             courseAdjacencyMatrix: Array<IntArray>,
             studentCount: Int,
@@ -719,12 +778,67 @@ enum class Optimize(val code: String, vararg val lowLevels: LowLevel) {
                 val initPenalty= Util.getPenalty(init, courseAdjacencyMatrix, studentCount)
                 initPenalty + initPenalty * Config.DEFAULT_LEVEL_INIT_PERCENTAGE
             }
-            return swapN(
-                init, courseAdjacencyMatrix, studentCount, n, iterations,
-                Evaluation.GREAT_DELUGE(initLevel, decayRate)
-            )?.apply {
-                first.tag.optimization= GD_SWAPn
+            return lin_swapN(
+                init, courseAdjacencyMatrix, studentCount, n,
+                Evaluation.SIMULATED_ANNEALING(initLevel, decayRate),
+                iterations
+            )
+        }
+
+        fun hyperSelection(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            evaluation: Evaluation,
+            maxN: Int = 3,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? = HighLevel.SELECTION(maxN, evaluation).optimize(
+            init, courseAdjacencyMatrix, studentCount, iterations
+        )
+
+        fun hyperSelection_hc(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            maxN: Int,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? = HighLevel.SELECTION(maxN, Evaluation.BETTER).optimize(
+            init, courseAdjacencyMatrix, studentCount, iterations
+        )
+
+        fun hyperSelection_sa(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            maxN: Int,
+            initTemperature: Double = Config.DEFAULT_TEMPERATURE_INIT,
+            decayRate: Double = Config.DEFAULT_DECAY_RATE,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? = HighLevel.SELECTION(
+            maxN, Evaluation.SIMULATED_ANNEALING(initTemperature, decayRate)
+        ).optimize(
+            init, courseAdjacencyMatrix, studentCount, iterations
+        )
+
+        fun hyperSelection_gd(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            maxN: Int,
+            initLevel: Double = -1.0,
+            decayRate: Double = Config.DEFAULT_DECAY_RATE,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? {
+            @Suppress(SuppressLiteral.NAME_SHADOWING)
+            val initLevel= if(initLevel > 0) initLevel else {
+                val initPenalty= Util.getPenalty(init, courseAdjacencyMatrix, studentCount)
+                initPenalty + initPenalty * Config.DEFAULT_LEVEL_INIT_PERCENTAGE
             }
+            return HighLevel.SELECTION(
+                maxN, Evaluation.GREAT_DELUGE(initLevel, decayRate)
+            ).optimize(
+                init, courseAdjacencyMatrix, studentCount, iterations
+            )
         }
     }
 }
