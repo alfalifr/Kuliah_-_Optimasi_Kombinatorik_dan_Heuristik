@@ -2,7 +2,6 @@ package fp
 
 import fp.Config.COURSE_INDEX_OFFSET
 import sidev.lib.`val`.SuppressLiteral
-import sidev.lib.console.prine
 import sidev.lib.exception.IllegalArgExc
 import sidev.lib.math.random.DistributedRandom
 import sidev.lib.math.random.distRandomOf
@@ -10,34 +9,27 @@ import sidev.lib.math.random.randomBoolean
 import sidev.lib.progression.domain
 import sidev.lib.progression.range
 import kotlin.math.exp
-import kotlin.random.Random
 
 
-enum class Optimize(val code: String, vararg val lowLevels: LowLevel) {
+enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*vararg val lowLevels: LowLevel*/) {
     NOT_YET("_0"),
-    HC_MOVE("hc_m", LowLevel.MOVE),
-    SA_MOVE("sa_m", LowLevel.MOVE),
-    GD_MOVE("gd_m", LowLevel.MOVE),
-    //    HC_MOVE2("hc_m2", LowLevel.MOVE_2),
-    HC_MOVEn("hc_mN", LowLevel.MOVE_N.Default),
-    SA_MOVEn("sa_mN", LowLevel.MOVE_N.Default),
-    GD_MOVEn("gd_mN", LowLevel.MOVE_N.Default),
-    /*
-        {
-            val n= 1
-            fun af(){}
-        },
-     */
-    HC_SWAP("hc_s", LowLevel.SWAP),
-    SA_SWAP("sa_s", LowLevel.SWAP),
-    GD_SWAP("GD_s", LowLevel.SWAP),
-    HC_SWAPn("hc_sN", LowLevel.SWAP_N.Default),
-    SA_SWAPn("sa_sN", LowLevel.SWAP_N.Default),
-    GD_SWAPn("gd_sN", LowLevel.SWAP_N.Default),
+    HC_MOVE("hc_m"),
+    SA_MOVE("sa_m"),
+    GD_MOVE("gd_m"),
+    HC_MOVEn("hc_mN"),
+    SA_MOVEn("sa_mN"),
+    GD_MOVEn("gd_mN"),
+    HC_SWAP("hc_s"),
+    SA_SWAP("sa_s"),
+    GD_SWAP("gd_s"),
+    HC_SWAPn("hc_sN"),
+    SA_SWAPn("sa_sN"),
+    GD_SWAPn("gd_sN"),
     Hyper_HC("hyp_hc"),
     Hyper_SA("hyp_sa"),
     Hyper_GD("hyp_gd")
     ;
+
     sealed class LowLevel(val code: String) {
         companion object {
             val all: List<LowLevel> by lazy { listOf(MOVE, SWAP, MOVE_N.Default, SWAP_N.Default) }
@@ -57,10 +49,10 @@ enum class Optimize(val code: String, vararg val lowLevels: LowLevel) {
         }
 
         abstract fun calculate(i: Int, currentSchedule: Schedule, courseAdjacencyMatrix: Array<IntArray>): Array<CourseMove>?
-        override fun toString(): String = this::class.simpleName!!
         operator fun invoke(i: Int, currentSchedule: Schedule, courseAdjacencyMatrix: Array<IntArray>): Array<CourseMove>? =
             calculate(i, currentSchedule, courseAdjacencyMatrix)
 
+        override fun toString(): String = this::class.simpleName!!
         override fun equals(other: Any?): Boolean = other is LowLevel && toString() == other.toString()
         override fun hashCode(): Int = toString().hashCode()
 
@@ -378,14 +370,21 @@ enum class Optimize(val code: String, vararg val lowLevels: LowLevel) {
 
     sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluation) {
         val lowLevelDist: DistributedRandom<LowLevel> = distRandomOf()
-        //abstract fun calculate(i: Int, currentSchedule: Schedule, courseAdjacencyMatrix: Array<IntArray>): Array<CourseMove>?
+        abstract val optimizationTag: Optimize
+
         abstract fun optimize(
             init: Schedule,
             courseAdjacencyMatrix: Array<IntArray>,
             studentCount: Int,
             iterations: Int = Config.DEFAULT_ITERATIONS
         ): Pair<Schedule, Double>?
-        abstract val optimizationTag: Optimize
+        operator fun invoke(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            iterations: Int = Config.DEFAULT_ITERATIONS
+        ): Pair<Schedule, Double>? =
+            optimize(init, courseAdjacencyMatrix, studentCount, iterations)
 
         protected fun nextLowLevel(): LowLevel {
             return if(!lowLevelDist.isEmpty()
@@ -398,6 +397,8 @@ enum class Optimize(val code: String, vararg val lowLevels: LowLevel) {
             lowLevelDist.add(lowLevel)
         }
         override fun toString(): String = this::class.simpleName!!
+        override fun equals(other: Any?): Boolean = other is HighLevel && toString() == other.toString()
+        override fun hashCode(): Int = toString().hashCode()
 
         class SELECTION(maxN: Int = 3, evaluation: Evaluation = Evaluation.BETTER)
             : HighLevel("sel", maxN, evaluation) {
