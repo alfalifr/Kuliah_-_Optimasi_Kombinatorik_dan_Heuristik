@@ -31,7 +31,8 @@ sealed class Evaluation {
 
             val accept= if(currentPenaltySum < prevPenaltySum) true
             else {
-                val acc = 1 / (1 + exp((currentPenaltySum - prevPenaltySum) / currTemperature))
+                //val acc = 1 / (1 + exp((currentPenaltySum - prevPenaltySum) / currTemperature))
+                val acc = exp(-(currentPenaltySum - prevPenaltySum) / currTemperature)
                 randomBoolean(acc)
             }
             currTemperature -= currTemperature * decayRate

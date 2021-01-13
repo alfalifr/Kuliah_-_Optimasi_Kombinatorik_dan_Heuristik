@@ -6,7 +6,6 @@ import fp.model.Schedule
 import sidev.lib.math.random.DistributedRandom
 import sidev.lib.math.random.distRandomOf
 import sidev.lib.math.random.randomBoolean
-import kotlin.math.exp
 
 /**
  * Kelas heuristik level tinggi yang berfungsi untuk melakukan iterasi
@@ -31,9 +30,12 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
     ): Pair<Schedule, Double>? =
         optimize(init, courseAdjacencyMatrix, studentCount, iterations)
 
-    protected fun nextLowLevel(): LowLevel {
+    protected fun nextLowLevel(coefficient: Double): LowLevel {
+        //val coef= limit * 15.0 / 100.0  // persen ke berapa probabilitas mencapai 50%, dalam kasus di samping, yaitu sebesar 15% dari panjang sudah mencapai 50% probabilitasnya.
+        //val f5_= { it: Double -> 1 / (1+coef * (1/it)) }
+        //randomBoolean(1 / (1 + exp(1.0 / lowLevelDist.distSum)))
         return if(!lowLevelDist.isEmpty()
-            && randomBoolean(1 / (1 + exp(1.0 / lowLevelDist.distSum))) // Ada kemungkinan dapet lowLevel baru meskipun udah di assign yg lama.
+            && randomBoolean(1 / (1.5 + coefficient * (1 / lowLevelDist.distSum))) // Ada kemungkinan dapet lowLevel baru meskipun udah di assign yg lama.
         ) lowLevelDist.next()
         else initLowLevel()
     }
@@ -71,9 +73,10 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
             //var resSch: Schedule? = null
             var acceptRes= false
             val sch= init.clone_()
+            val coefficient= iterations * 40 / 100.0  // probabilitas diambil-ulangnya lowLevel yang sama mencapai hampir 50% saat iterasi mencapai 40% dari panjang total.
             for(i in 0 until iterations) {
                 //val sch= resSch?.clone_() ?: init.clone_()
-                val lowLevel= nextLowLevel()
+                val lowLevel= nextLowLevel(coefficient)
                 val moves= lowLevel(i, sch, courseAdjacencyMatrix)
                 //prine("HigLevel.SELECTION lowLevel= $lowLevel")
                 //val penalty= Util.getPenalty(sch, courseAdjacencyMatrix, studentCount)

@@ -5,6 +5,8 @@ import fp.Config.FILE_EXTENSION_RES
 import fp.Config.FILE_EXTENSION_SOLUTION
 import fp.Config.FILE_EXTENSION_STUDENT
 import fp.algo.construct.Construct
+import fp.algo.optimize.Evaluation
+import fp.algo.optimize.HighLevel
 import fp.algo.optimize.Optimize
 import fp.model.*
 import org.junit.Test
@@ -14,6 +16,7 @@ import sidev.lib.collection.forEachIndexed
 import sidev.lib.console.prin
 import sidev.lib.console.prine
 import sidev.lib.console.prinw
+import sidev.lib.math.random.probabilities
 import java.io.File
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTime
@@ -367,7 +370,7 @@ class FpTest {
     @ExperimentalTime
     @Test
     fun realAssignmentTest_6(){
-        val fileIndex= 6
+        val fileIndex= 1
         val fileName= Config.fileNames[fileIndex]
         val maxTimeslot= Config.maxTimeslot[fileIndex]
         val adjMatContainer = mutableMapOf<String, Array<IntArray>>()
@@ -396,53 +399,60 @@ class FpTest {
         val opt7: Pair<Schedule, Double>?
         val opt8: Pair<Schedule, Double>?
         val opt9: Pair<Schedule, Double>?
- */
-//        val opt10: Pair<Schedule, Double>?
-//        val opt11: Pair<Schedule, Double>?
+// */
+        val opt10: Pair<Schedule, Double>?
+        val opt11: Pair<Schedule, Double>?
         val opt12: Pair<Schedule, Double>?
+        val opt13: Pair<Schedule, Double>?
 
         val optList= mutableListOf<TestResult<Schedule>>()
 /*
         prin("================ Optimasi - hc_swap ===================")
-        val t1= measureTime { opt1= Optimize.swap_hillClimbing(bestSch, adjMat, studCount, 1_000_000) }
+        val t1= measureTime { opt1= Optimize.lin_swap_hc(bestSch, adjMat, studCount, 1_000_000) }
         prin("================ Optimasi - hc_move ===================")
-        val t2= measureTime { opt2= Optimize.move_hillClimbing(bestSch, adjMat, studCount, 1_000_000) }
+        val t2= measureTime { opt2= Optimize.lin_move_hc(bestSch, adjMat, studCount, 1_000_000) }
 //        prin("================ Optimasi - hc_move2 ===================")
 //        val t3= measureTime { opt3= Optimize.move2_hillClimbing(bestSch, adjMat, studCount, 1_000_000) }
         prin("================ Optimasi - hc_moveN n=$n ===================")
-        val t4= measureTime { opt4= Optimize.moveN_hillClimbing(bestSch, adjMat, studCount, n, 1_000_000) }
+        val t4= measureTime { opt4= Optimize.lin_moveN_hc(bestSch, adjMat, studCount, n, 1_000_000) }
         prin("================ Optimasi - hc_swapN n=$n ===================")
-        val t5= measureTime { opt5= Optimize.swapN_hillClimbing(bestSch, adjMat, studCount, n, 1_000_000) }
+        val t5= measureTime { opt5= Optimize.lin_swapN_hc(bestSch, adjMat, studCount, n, 1_000_000) }
         prin("================ Optimasi - sa_moveN n=$n ===================")
-        val t6= measureTime { opt6= Optimize.moveN_simulatedAnnealing(bestSch, adjMat, studCount, n, temp, decayRate, 1_000_000) }
+        val t6= measureTime { opt6= Optimize.lin_moveN_sa(bestSch, adjMat, studCount, n, temp, decayRate, 1_000_000) }
         prin("================ Optimasi - sa_swapN n=$n ===================")
-        val t7= measureTime { opt7= Optimize.swapN_simulatedAnnealing(bestSch, adjMat, studCount, n, temp, decayRate, 1_000_000) }
+        val t7= measureTime { opt7= Optimize.lin_swapN_sa(bestSch, adjMat, studCount, n, temp, decayRate, 1_000_000) }
         prin("================ Optimasi - gd_moveN n=$n ===================")
-        val t8= measureTime { opt8= Optimize.moveN_greatDeluge(bestSch, adjMat, studCount, n, decayRate = decayRate, iterations = 1_000_000) }
+        val t8= measureTime { opt8= Optimize.lin_moveN_gd(bestSch, adjMat, studCount, n, decayRate = decayRate, iterations = 1_000_000) }
         prin("================ Optimasi - gd_swapN n=$n ===================")
-        val t9= measureTime { opt9= Optimize.swapN_greatDeluge(bestSch, adjMat, studCount, n, decayRate = decayRate, iterations = 1_000_000) }
- */
-/*
+        val t9= measureTime { opt9= Optimize.lin_swapN_gd(bestSch, adjMat, studCount, n, decayRate = decayRate, iterations = 1_000_000) }
+// */
+///*
         prin("================ Optimasi - hyper_gd maxN=$n ===================")
-        val optAlgo: Optimize.HighLevel.SELECTION
+        val optAlgo: HighLevel.SELECTION
         val t10= measureTime {
             val initLevel= initPenalty + initPenalty * Config.DEFAULT_LEVEL_INIT_PERCENTAGE
-            optAlgo= Optimize.HighLevel.SELECTION(n, Optimize.Evaluation.GREAT_DELUGE(initLevel, decayRate))
+            optAlgo= HighLevel.SELECTION(n, Evaluation.GREAT_DELUGE(initLevel, decayRate))
             opt10= optAlgo.optimize(bestSch, adjMat, studCount, 1_000_000)
         }
         prin("================ Optimasi - hyper_sa maxN=$n ===================")
-        val optAlgo2: Optimize.HighLevel.SELECTION
+        val optAlgo2: HighLevel.SELECTION
         val t11= measureTime {
             //val initLevel= initPenalty + initPenalty * Config.DEFAULT_LEVEL_INIT_PERCENTAGE
-            optAlgo2= Optimize.HighLevel.SELECTION(n, Optimize.Evaluation.SIMULATED_ANNEALING(temp, decayRate))
+            optAlgo2= HighLevel.SELECTION(n, Evaluation.SIMULATED_ANNEALING(temp, decayRate))
             opt11= optAlgo2.optimize(bestSch, adjMat, studCount, 1_000_000)
         }
- */
+// */
 
         prin("================ Optimasi - lin_swap_hc maxN=$n ===================")
         val t12= measureTime {
             //val initLevel= initPenalty + initPenalty * Config.DEFAULT_LEVEL_INIT_PERCENTAGE
             opt12= Optimize.lin_swap_hc(bestSch, adjMat, studCount, 1_000_000)
+        }
+
+        prin("================ Optimasi - hyperSelection_hc maxN=$n ===================")
+        val t13= measureTime {
+            //val initLevel= initPenalty + initPenalty * Config.DEFAULT_LEVEL_INIT_PERCENTAGE
+            opt13= Optimize.hyperSelection_hc(bestSch, adjMat, studCount, n, 1_000_000)
         }
 
         prin("\n\n\n=============== Scheduling _ ${bestSch.miniString()} _ duration= $bestDurr _ initPenalty= $initPenalty ==========")
@@ -469,7 +479,7 @@ class FpTest {
         }.isNull {
             prinw("============== Hasil optimasi _ Tidak ada durr= $t2 ==============")
         }
- */
+// */
         opt4?.also { (optSch, optPenalty) ->
             val conflict= Util.checkConflicts(optSch, adjMat)
             prin("============== Hasil optimasi _ optSch= ${optSch.miniString()} _ optPenalty= ${optPenalty} durr= $t4 conflict=$conflict ==============")
@@ -512,8 +522,8 @@ class FpTest {
         }.isNull {
             prinw("============== Hasil optimasi _ Tidak ada durr= $t2 ==============")
         }
- */
-/*
+// */
+///*
         opt10?.also { (optSch, optPenalty) ->
             val conflict= Util.checkConflicts(optSch, adjMat)
             prin("============== Hasil optimasi _ optSch= ${optSch.miniString()} _ optPenalty= ${optPenalty} durr= $t10 conflict=$conflict ==============")
@@ -528,7 +538,7 @@ class FpTest {
         }.isNull {
             prinw("============== Hasil optimasi _ Tidak ada durr= $t11 ==============")
         }
- */
+// */
         opt12?.also { (optSch, optPenalty) ->
             val conflict= Util.checkConflicts(optSch, adjMat)
             prin("============== Hasil optimasi _ optSch= ${optSch.miniString()} _ optPenalty= ${optPenalty} durr= $t12 conflict=$conflict ==============")
@@ -536,14 +546,23 @@ class FpTest {
         }.isNull {
             prinw("============== Hasil optimasi _ Tidak ada durr= $t12 ==============")
         }
-/*
+        opt13?.also { (optSch, optPenalty) ->
+            val conflict= Util.checkConflicts(optSch, adjMat)
+            prin("============== Hasil optimasi _ optSch= ${optSch.miniString()} _ optPenalty= ${optPenalty} durr= $t13 conflict=$conflict ==============")
+            optList += TestResult(optSch, t13)
+        }.isNull {
+            prinw("============== Hasil optimasi _ Tidak ada durr= $t13 ==============")
+        }
+///*
+        prin("")
         prin("optAlgo= ${optAlgo.optimizationTag}")
         prin("optAlgo.lowLevelDist= ${optAlgo.lowLevelDist}")
         prin("optAlgo.lowLevelDist.probabilities= ${optAlgo.lowLevelDist.probabilities}")
         prin("optAlgo2= ${optAlgo2.optimizationTag}")
         prin("optAlgo2.lowLevelDist= ${optAlgo2.lowLevelDist}")
         prin("optAlgo2.lowLevelDist.probabilities= ${optAlgo2.lowLevelDist.probabilities}")
- */
+        prin("")
+// */
 /*
         val betterSch= when{
             opt1 == null -> opt2
