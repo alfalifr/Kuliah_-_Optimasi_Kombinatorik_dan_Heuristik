@@ -31,8 +31,6 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
         optimize(init, courseAdjacencyMatrix, studentCount, iterations)
 
     protected fun nextLowLevel(coefficient: Double): LowLevel {
-        //val coef= limit * 15.0 / 100.0  // persen ke berapa probabilitas mencapai 50%, dalam kasus di samping, yaitu sebesar 15% dari panjang sudah mencapai 50% probabilitasnya.
-        //val f5_= { it: Double -> 1 / (1+coef * (1/it)) }
         //randomBoolean(1 / (1 + exp(1.0 / lowLevelDist.distSum)))
         return if(!lowLevelDist.isEmpty()
             && randomBoolean(1 / (1.5 + coefficient * (1 / lowLevelDist.distSum))) // Ada kemungkinan dapet lowLevel baru meskipun udah di assign yg lama.
@@ -59,18 +57,9 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
             courseAdjacencyMatrix: Array<IntArray>,
             studentCount: Int,
             iterations: Int,
-            //evaluation: Evaluation,
-            //action: (i: Int, currentSchedule: Schedule, penaltyChange: Array<Pair<CourseMove, Double>>) -> Unit,
-            //[currentSchedule] tidak boleh dimodif isinya.
-            //calculation: (i: Int, currentSchedule: Schedule) -> Array<CourseMove>?, //Jika `true`, maka [currentSchedule] akan dijadikan sbg `resSch`.
         ): Pair<Schedule, Double>? {
-            //val initFlat= init.toFlat()
-            //val timeslotCount= init.timeslotCount
-            //initFlat.forEach { prine(it) }
-            //prine("initFlat.getCourseTimeslot(1)=${initFlat.getCourseTimeslot(1)}")
             val resDistMat= Util.getFullDistanceMatrix(init, courseAdjacencyMatrix)
             //var resPenalty= Util.getPenalty(init, courseAdjacencyMatrix, studentCount)
-            //var resSch: Schedule? = null
             var acceptRes= false
             val sch= init.clone_()
             val coefficient= iterations * 40 / 100.0  // probabilitas diambil-ulangnya lowLevel yang sama mencapai hampir 50% saat iterasi mencapai 40% dari panjang total.
@@ -78,9 +67,6 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
                 //val sch= resSch?.clone_() ?: init.clone_()
                 val lowLevel= nextLowLevel(coefficient)
                 val moves= lowLevel(i, sch, courseAdjacencyMatrix)
-                //prine("HigLevel.SELECTION lowLevel= $lowLevel")
-                //val penalty= Util.getPenalty(sch, courseAdjacencyMatrix, studentCount)
-                //prine("penaltyChange= $penaltyChange")
                 if(moves != null && evaluation(resDistMat, moves)){
                     for(move in moves){
                         resDistMat.setPositionMatrix(move)
@@ -91,11 +77,8 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
                     }
                     accept(lowLevel)
                     acceptRes= true
-                    //prine("MASUK akhir= $resPenaltyComp")
                 } //else { resPenalty.value= resPenalty.value }
             }
-            //val initFinalPenalty= Util.getPenalty(init, courseAdjacencyMatrix, studentCount)
-            //prine("Optimize initFinalPenalty= $initFinalPenalty")
             return if(acceptRes) {
                 val finalPenalty= Util.getPenalty(sch, courseAdjacencyMatrix, studentCount)
                 sch.apply {
@@ -137,13 +120,7 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
             studentCount: Int,
             iterations: Int
         ): Pair<Schedule, Double>? {
-            //val initFlat= init.toFlat()
-            //val timeslotCount= init.timeslotCount
-            //initFlat.forEach { prine(it) }
-            //prine("initFlat.getCourseTimeslot(1)=${initFlat.getCourseTimeslot(1)}")
             val resDistMat= Util.getFullDistanceMatrix(init, courseAdjacencyMatrix)
-            //var resPenalty= Util.getPenalty(init, courseAdjacencyMatrix, studentCount)
-            //var resSch: Schedule? = null
             var acceptRes= false
             val sch= init.clone_()
             val trimAfter= lowLevel != LowLevel.SWAP && lowLevel !is LowLevel.SWAP_N
@@ -151,18 +128,14 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
                 //val sch= resSch?.clone_() ?: init.clone_()
                 val moves= lowLevel(i, sch, courseAdjacencyMatrix)
                 //val penalty= Util.getPenalty(sch, courseAdjacencyMatrix, studentCount)
-                //prine("penaltyChange= $penaltyChange")
                 if(moves != null && evaluation(resDistMat, moves)){
                     for(move in moves){
                         resDistMat.setPositionMatrix(move)
                         sch.moveById(move.id, move.to, trimAfter)
                     }
                     acceptRes= true
-                    //prine("MASUK akhir= $resPenaltyComp")
                 } //else { resPenalty.value= resPenalty.value }
             }
-            //val initFinalPenalty= Util.getPenalty(init, courseAdjacencyMatrix, studentCount)
-            //prine("Optimize initFinalPenalty= $initFinalPenalty")
             return if(acceptRes) {
                 val finalPenalty= Util.getPenalty(sch, courseAdjacencyMatrix, studentCount)
                 sch.apply {
