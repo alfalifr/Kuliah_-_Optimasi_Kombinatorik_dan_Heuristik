@@ -1,7 +1,7 @@
 package fp
 
 /**
- * Berisi konstan terkait pengaturan yg ada di FP, seperti direktori, nama file, dan ekstensi.
+ * Berisi konstan terkait pengaturan yg ada di FP, seperti direktori, nama file, ekstensi, dan nilai default.
  */
 object Config {
     const val COURSE_INDEX_OFFSET= 1

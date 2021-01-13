@@ -1,9 +1,16 @@
-package fp
+package fp.algo.construct
 
 import fp.Config.COURSE_INDEX_OFFSET
+import fp.model.Course
+import fp.model.Schedule
+import fp.model.Timeslot
 import sidev.lib.collection.fastSortedWith
 //import fp.Algo.Component
 
+/**
+ * Enum untuk algoritma construct initial solution menggunakan graph coloring dengan
+ * berbagai metode pengurutan assign ke timeslot.
+ */
 enum class Construct(val code: String, vararg val component: Component) {
     UNSORTED("_0"),
     LaD("LaD", Component.DEGREE),
@@ -26,18 +33,61 @@ enum class Construct(val code: String, vararg val component: Component) {
     LaD_S_D("LaD_S_D", Component.DEGREE, Component.SATURATION, Component.DEGREE),
     LaWD_S_WD("LaWD_S_WD", Component.WEIGHTED_DEGREE, Component.SATURATION, Component.WEIGHTED_DEGREE),
     LaE_S_E("LaE_S_E", Component.ENROLLMENT, Component.SATURATION, Component.ENROLLMENT),
-    LaWD_E_S_WD_E("LaWD_E_S_WD_E", Component.WEIGHTED_DEGREE, Component.ENROLLMENT, Component.SATURATION, Component.WEIGHTED_DEGREE, Component.ENROLLMENT),
-    LaE_WD_S_E_WD("LaE_WD_S_E_WD", Component.ENROLLMENT, Component.WEIGHTED_DEGREE, Component.SATURATION, Component.ENROLLMENT, Component.WEIGHTED_DEGREE),
+    LaWD_E_S_WD_E("LaWD_E_S_WD_E",
+        Component.WEIGHTED_DEGREE,
+        Component.ENROLLMENT,
+        Component.SATURATION,
+        Component.WEIGHTED_DEGREE,
+        Component.ENROLLMENT
+    ),
+    LaE_WD_S_E_WD("LaE_WD_S_E_WD",
+        Component.ENROLLMENT,
+        Component.WEIGHTED_DEGREE,
+        Component.SATURATION,
+        Component.ENROLLMENT,
+        Component.WEIGHTED_DEGREE
+    ),
     X_LaCE_S_CE("LaCE_S_CE", Component.COMMON_ENROLLMENT, Component.SATURATION, Component.COMMON_ENROLLMENT),
-    X_LaWCD_S_WCD("LaWCD_S_WCD", Component.WEIGHTED_COMMON_DEGREE, Component.SATURATION, Component.WEIGHTED_COMMON_DEGREE),
-    X_LaWCD_D_S_WCD_D("LaWCD_D_S_WCD_D", Component.WEIGHTED_COMMON_DEGREE, Component.DEGREE, Component.SATURATION, Component.WEIGHTED_COMMON_DEGREE, Component.DEGREE),
-    X_LaWCD_CE_S_WCD_CE("LaWCD_CE_S_WCD_CE", Component.WEIGHTED_COMMON_DEGREE, Component.COMMON_ENROLLMENT, Component.SATURATION, Component.WEIGHTED_COMMON_DEGREE, Component.COMMON_ENROLLMENT),
+    X_LaWCD_S_WCD("LaWCD_S_WCD",
+        Component.WEIGHTED_COMMON_DEGREE,
+        Component.SATURATION,
+        Component.WEIGHTED_COMMON_DEGREE
+    ),
+    X_LaWCD_D_S_WCD_D("LaWCD_D_S_WCD_D",
+        Component.WEIGHTED_COMMON_DEGREE,
+        Component.DEGREE,
+        Component.SATURATION,
+        Component.WEIGHTED_COMMON_DEGREE,
+        Component.DEGREE
+    ),
+    X_LaWCD_CE_S_WCD_CE("LaWCD_CE_S_WCD_CE",
+        Component.WEIGHTED_COMMON_DEGREE,
+        Component.COMMON_ENROLLMENT,
+        Component.SATURATION,
+        Component.WEIGHTED_COMMON_DEGREE,
+        Component.COMMON_ENROLLMENT
+    ),
     X_LaWCD_S_CE("LaWCD_S_CE", Component.WEIGHTED_COMMON_DEGREE, Component.SATURATION, Component.COMMON_ENROLLMENT),
     X_LaWCxD_S_CE("LaWCxD_S_CE", Component.WEIGHTED_COMPLEX_DEGREE, Component.SATURATION, Component.COMMON_ENROLLMENT),
     X_LaWCxD_S_D("LaWCxD_S_D", Component.WEIGHTED_COMPLEX_DEGREE, Component.SATURATION, Component.DEGREE),
-    X_LaWCxD_S_WCD_CE("LaWCxD_S_WCD_CE", Component.WEIGHTED_COMPLEX_DEGREE, Component.SATURATION, Component.WEIGHTED_COMMON_DEGREE, Component.COMMON_ENROLLMENT),
-    X_LaWCxD_S_WCD_D("LaWCxD_S_WCD_D", Component.WEIGHTED_COMPLEX_DEGREE, Component.SATURATION, Component.WEIGHTED_COMMON_DEGREE, Component.DEGREE),
-    X_LaWCD_CE_S_CE("LaWCD_CE_S_CE", Component.WEIGHTED_COMMON_DEGREE, Component.COMMON_ENROLLMENT, Component.SATURATION, Component.COMMON_ENROLLMENT),
+    X_LaWCxD_S_WCD_CE("LaWCxD_S_WCD_CE",
+        Component.WEIGHTED_COMPLEX_DEGREE,
+        Component.SATURATION,
+        Component.WEIGHTED_COMMON_DEGREE,
+        Component.COMMON_ENROLLMENT
+    ),
+    X_LaWCxD_S_WCD_D("LaWCxD_S_WCD_D",
+        Component.WEIGHTED_COMPLEX_DEGREE,
+        Component.SATURATION,
+        Component.WEIGHTED_COMMON_DEGREE,
+        Component.DEGREE
+    ),
+    X_LaWCD_CE_S_CE("LaWCD_CE_S_CE",
+        Component.WEIGHTED_COMMON_DEGREE,
+        Component.COMMON_ENROLLMENT,
+        Component.SATURATION,
+        Component.COMMON_ENROLLMENT
+    ),
     ;
 
     enum class Component(val code: String) {

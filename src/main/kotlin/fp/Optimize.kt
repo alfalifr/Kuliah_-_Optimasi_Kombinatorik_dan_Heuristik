@@ -1,5 +1,5 @@
 package fp
-
+/*
 import fp.Config.COURSE_INDEX_OFFSET
 import sidev.lib.`val`.SuppressLiteral
 import sidev.lib.exception.IllegalArgExc
@@ -436,7 +436,10 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
                     if(moves != null && evaluation(resDistMat, moves)){
                         for(move in moves){
                             resDistMat.setPositionMatrix(move)
-                            sch.moveById(move.id, move.to)
+                            sch.moveById(
+                                move.id, move.to,
+                                lowLevel != LowLevel.SWAP && lowLevel !is LowLevel.SWAP_N
+                            )
                         }
                         accept(lowLevel)
                         acceptRes= true
@@ -495,6 +498,7 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
                 //var resSch: Schedule? = null
                 var acceptRes= false
                 val sch= init.clone_()
+                val trimAfter= lowLevel != LowLevel.SWAP && lowLevel !is LowLevel.SWAP_N
                 for(i in 0 until iterations) {
                     //val sch= resSch?.clone_() ?: init.clone_()
                     val moves= lowLevel(i, sch, courseAdjacencyMatrix)
@@ -503,7 +507,7 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
                     if(moves != null && evaluation(resDistMat, moves)){
                         for(move in moves){
                             resDistMat.setPositionMatrix(move)
-                            sch.moveById(move.id, move.to)
+                            sch.moveById(move.id, move.to, trimAfter)
                         }
                         acceptRes= true
                         //prine("MASUK akhir= $resPenaltyComp")
@@ -843,3 +847,5 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
         }
     }
 }
+
+ */

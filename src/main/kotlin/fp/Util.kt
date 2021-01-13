@@ -9,6 +9,8 @@ import fp.Config.FILE_EXTENSION_RES
 import fp.Config.FILE_EXTENSION_SLN
 import fp.Config.FILE_EXTENSION_SOLUTION
 import fp.Config.FILE_EXTENSION_STUDENT
+import fp.algo.construct.Construct
+import fp.model.*
 import sidev.lib.`val`.SuppressLiteral
 import sidev.lib.collection.array.forEachIndexed
 import sidev.lib.collection.forEachIndexed
@@ -28,6 +30,9 @@ import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTime
 
+/**
+ * Objek utilitas yang berisi berbagai fungsi helper.
+ */
 object Util {
 //    var courseAdjacencyMatrix: Array<IntArray> = Array(0) { IntArray(0) }
 /*
