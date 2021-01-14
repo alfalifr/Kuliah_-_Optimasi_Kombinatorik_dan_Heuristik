@@ -29,10 +29,10 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
     RW_SA("rw_sa"),
     RW_GD("rw_gd"),
     RW_TA("rw_ta"),
-    Tabu_HC("tabu_hc"),
-    Tabu_SA("tabu_sa"),
-    Tabu_GD("tabu_gd"),
-    Tabu_TA("tabu_ta"),
+    TA_HC("ta_hc"),
+    TA_SA("ta_sa"),
+    TA_GD("ta_gd"),
+    TA_TA("ta_ta"),
     ;
 
     companion object {
@@ -187,7 +187,7 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
             )
         }
 
-        fun hyperSelection(
+        fun rw(
             init: Schedule,
             courseAdjacencyMatrix: Array<IntArray>,
             studentCount: Int,
@@ -198,7 +198,7 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
             init, courseAdjacencyMatrix, studentCount, iterations
         )
 
-        fun hyperSelection_hc(
+        fun rw_hc(
             init: Schedule,
             courseAdjacencyMatrix: Array<IntArray>,
             studentCount: Int,
@@ -208,7 +208,7 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
             init, courseAdjacencyMatrix, studentCount, iterations
         )
 
-        fun hyperSelection_sa(
+        fun rw_sa(
             init: Schedule,
             courseAdjacencyMatrix: Array<IntArray>,
             studentCount: Int,
@@ -222,7 +222,7 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
             init, courseAdjacencyMatrix, studentCount, iterations
         )
 
-        fun hyperSelection_gd(
+        fun rw_gd(
             init: Schedule,
             courseAdjacencyMatrix: Array<IntArray>,
             studentCount: Int,
@@ -243,7 +243,7 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
             )
         }
 
-        fun hyperSelection_ta(
+        fun rw_ta(
             init: Schedule,
             courseAdjacencyMatrix: Array<IntArray>,
             studentCount: Int,

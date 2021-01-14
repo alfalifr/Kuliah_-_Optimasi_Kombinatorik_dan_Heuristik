@@ -40,7 +40,7 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
     protected fun nextLowLevel(coefficient: Double): LowLevel {
         //randomBoolean(1 / (1 + exp(1.0 / lowLevelDist.distSum)))
         return if(!lowLevelDist.isEmpty()
-            && randomBoolean(1 / (1.5 + coefficient * (1 / lowLevelDist.distSum))) // Ada kemungkinan dapet lowLevel baru meskipun udah di assign yg lama.
+            && randomBoolean(1 / (1 + coefficient / lowLevelDist.distSum)) // Ada kemungkinan dapet lowLevel baru meskipun udah di assign yg lama.
         ) lowLevelDist.next()
         else initLowLevel()
     }
@@ -73,7 +73,7 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
             //var resPenalty= Util.getPenalty(init, courseAdjacencyMatrix, studentCount)
             var acceptRes= false
             val sch= init.clone_()
-            val coefficient= iterations * 40 / 100.0  // probabilitas diambil-ulangnya lowLevel yang sama mencapai hampir 50% saat iterasi mencapai 40% dari panjang total.
+            val coefficient= iterations * 10 / 100.0  // probabilitas diambil-ulangnya lowLevel yang sama mencapai 50% saat iterasi mencapai 10% dari panjang total.
             for(i in 0 until iterations) {
                 //val sch= resSch?.clone_() ?: init.clone_()
                 val lowLevel= nextLowLevel(coefficient)
@@ -110,10 +110,10 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
         private val tabuLowLevels = arrayOfNulls<LowLevel>(tabuLowLevelSize)
         private var tabuLowLevelPointer= 0
         override val optimizationTag: Optimize = when(evaluation){
-            Evaluation.BETTER -> Optimize.Tabu_HC
-            is Evaluation.SIMULATED_ANNEALING -> Optimize.Tabu_SA
-            is Evaluation.GREAT_DELUGE -> Optimize.Tabu_GD
-            is Evaluation.TABU -> Optimize.Tabu_TA
+            Evaluation.BETTER -> Optimize.TA_HC
+            is Evaluation.SIMULATED_ANNEALING -> Optimize.TA_SA
+            is Evaluation.GREAT_DELUGE -> Optimize.TA_GD
+            is Evaluation.TABU -> Optimize.TA_TA
         }
         fun insertAsTabu(lowLevel: LowLevel){
             tabuLowLevels[tabuLowLevelPointer]= lowLevel
@@ -129,7 +129,7 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
             //var resPenalty= Util.getPenalty(init, courseAdjacencyMatrix, studentCount)
             var acceptRes= false
             val sch= init.clone_()
-            val coefficient= iterations * 40 / 100.0  // probabilitas diambil-ulangnya lowLevel yang sama mencapai hampir 50% saat iterasi mencapai 40% dari panjang total.
+            val coefficient= iterations * 40 / 100.0  // probabilitas diambil-ulangnya lowLevel yang sama mencapai 50% saat iterasi mencapai 40% dari panjang total.
             for(i in 0 until iterations) {
                 //val sch= resSch?.clone_() ?: init.clone_()
                 var lowLevel: LowLevel
