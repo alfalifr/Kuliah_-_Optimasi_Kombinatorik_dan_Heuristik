@@ -370,7 +370,7 @@ class FpTest {
     @ExperimentalTime
     @Test
     fun realAssignmentTest_6(){
-        val fileIndex= 1
+        val fileIndex= 3
         val fileName= Config.fileNames[fileIndex]
         val maxTimeslot= Config.maxTimeslot[fileIndex]
         val adjMatContainer = mutableMapOf<String, Array<IntArray>>()
@@ -389,6 +389,9 @@ class FpTest {
         val temp= 43.0
         val decayRate= 0.02
         val n= 5
+        val initLevel= initPenalty + initPenalty * Config.DEFAULT_LEVEL_INIT_PERCENTAGE
+        val tabuMoveSize= 25
+        val tabuLLHSize= 6
 /*
         val opt1: Pair<Schedule, Double>?
         val opt2: Pair<Schedule, Double>?
@@ -404,6 +407,10 @@ class FpTest {
         val opt11: Pair<Schedule, Double>?
         val opt12: Pair<Schedule, Double>?
         val opt13: Pair<Schedule, Double>?
+        val opt14: Pair<Schedule, Double>?
+        val opt15: Pair<Schedule, Double>?
+        val opt16: Pair<Schedule, Double>?
+        val opt17: Pair<Schedule, Double>?
 
         val optList= mutableListOf<TestResult<Schedule>>()
 /*
@@ -428,17 +435,16 @@ class FpTest {
 // */
 ///*
         prin("================ Optimasi - hyper_gd maxN=$n ===================")
-        val optAlgo: HighLevel.SELECTION
+        val optAlgo: HighLevel.ROULLETE_WHEEL
         val t10= measureTime {
-            val initLevel= initPenalty + initPenalty * Config.DEFAULT_LEVEL_INIT_PERCENTAGE
-            optAlgo= HighLevel.SELECTION(n, Evaluation.GREAT_DELUGE(initLevel, decayRate))
+            optAlgo= HighLevel.ROULLETE_WHEEL(n, Evaluation.GREAT_DELUGE(initLevel, decayRate))
             opt10= optAlgo.optimize(bestSch, adjMat, studCount, 1_000_000)
         }
         prin("================ Optimasi - hyper_sa maxN=$n ===================")
-        val optAlgo2: HighLevel.SELECTION
+        val optAlgo2: HighLevel.ROULLETE_WHEEL
         val t11= measureTime {
             //val initLevel= initPenalty + initPenalty * Config.DEFAULT_LEVEL_INIT_PERCENTAGE
-            optAlgo2= HighLevel.SELECTION(n, Evaluation.SIMULATED_ANNEALING(temp, decayRate))
+            optAlgo2= HighLevel.ROULLETE_WHEEL(n, Evaluation.SIMULATED_ANNEALING(temp, decayRate))
             opt11= optAlgo2.optimize(bestSch, adjMat, studCount, 1_000_000)
         }
 // */
@@ -453,6 +459,37 @@ class FpTest {
         val t13= measureTime {
             //val initLevel= initPenalty + initPenalty * Config.DEFAULT_LEVEL_INIT_PERCENTAGE
             opt13= Optimize.hyperSelection_hc(bestSch, adjMat, studCount, n, 1_000_000)
+        }
+
+        prin("================ Optimasi - tabu_sa maxN=$n tabuSize= $tabuLLHSize ===================")
+        val optAlgo3: HighLevel.TABU
+        val t14= measureTime {
+            //val initLevel= initPenalty + initPenalty * Config.DEFAULT_LEVEL_INIT_PERCENTAGE
+            optAlgo3= HighLevel.TABU(n, tabuLLHSize, Evaluation.SIMULATED_ANNEALING(temp, decayRate))
+            opt14= optAlgo3(bestSch, adjMat, studCount, 1_000_000)
+        }
+
+        prin("================ Optimasi - tabu_gd maxN=$n tabuSize= $tabuLLHSize ===================")
+        val optAlgo4: HighLevel.TABU
+        val t15= measureTime {
+            optAlgo4= HighLevel.TABU(n, tabuLLHSize, Evaluation.GREAT_DELUGE(initLevel, decayRate))
+            opt15= optAlgo4(bestSch, adjMat, studCount, 1_000_000)
+        }
+
+        prin("================ Optimasi - tabu_tabu maxN=$n tabuSize= $tabuLLHSize ===================")
+        val optAlgo5: HighLevel.TABU
+        val t16= measureTime {
+            //val initLevel= initPenalty + initPenalty * Config.DEFAULT_LEVEL_INIT_PERCENTAGE
+            optAlgo5= HighLevel.TABU(n, tabuLLHSize, Evaluation.TABU(tabuMoveSize))
+            opt16= optAlgo5(bestSch, adjMat, studCount, 1_000_000)
+        }
+
+        prin("================ Optimasi - rw_tabu maxN=$n tabuSize= $tabuLLHSize ===================")
+        val optAlgo6: HighLevel.ROULLETE_WHEEL
+        val t17= measureTime {
+            //val initLevel= initPenalty + initPenalty * Config.DEFAULT_LEVEL_INIT_PERCENTAGE
+            optAlgo6= HighLevel.ROULLETE_WHEEL(n, Evaluation.TABU(tabuMoveSize))
+            opt17= optAlgo6(bestSch, adjMat, studCount, 1_000_000)
         }
 
         prin("\n\n\n=============== Scheduling _ ${bestSch.miniString()} _ duration= $bestDurr _ initPenalty= $initPenalty ==========")
@@ -553,6 +590,34 @@ class FpTest {
         }.isNull {
             prinw("============== Hasil optimasi _ Tidak ada durr= $t13 ==============")
         }
+        opt14?.also { (optSch, optPenalty) ->
+            val conflict= Util.checkConflicts(optSch, adjMat)
+            prin("============== Hasil optimasi _ optSch= ${optSch.miniString()} _ optPenalty= ${optPenalty} durr= $t14 conflict=$conflict ==============")
+            optList += TestResult(optSch, t14)
+        }.isNull {
+            prinw("============== Hasil optimasi _ Tidak ada durr= $t14 ==============")
+        }
+        opt15?.also { (optSch, optPenalty) ->
+            val conflict= Util.checkConflicts(optSch, adjMat)
+            prin("============== Hasil optimasi _ optSch= ${optSch.miniString()} _ optPenalty= ${optPenalty} durr= $t15 conflict=$conflict ==============")
+            optList += TestResult(optSch, t15)
+        }.isNull {
+            prinw("============== Hasil optimasi _ Tidak ada durr= $t15 ==============")
+        }
+        opt16?.also { (optSch, optPenalty) ->
+            val conflict= Util.checkConflicts(optSch, adjMat)
+            prin("============== Hasil optimasi _ optSch= ${optSch.miniString()} _ optPenalty= ${optPenalty} durr= $t16 conflict=$conflict ==============")
+            optList += TestResult(optSch, t16)
+        }.isNull {
+            prinw("============== Hasil optimasi _ Tidak ada durr= $t16 ==============")
+        }
+        opt17?.also { (optSch, optPenalty) ->
+            val conflict= Util.checkConflicts(optSch, adjMat)
+            prin("============== Hasil optimasi _ optSch= ${optSch.miniString()} _ optPenalty= ${optPenalty} durr= $t17 conflict=$conflict ==============")
+            optList += TestResult(optSch, t17)
+        }.isNull {
+            prinw("============== Hasil optimasi _ Tidak ada durr= $t17 ==============")
+        }
 ///*
         prin("")
         prin("optAlgo= ${optAlgo.optimizationTag}")
@@ -561,6 +626,18 @@ class FpTest {
         prin("optAlgo2= ${optAlgo2.optimizationTag}")
         prin("optAlgo2.lowLevelDist= ${optAlgo2.lowLevelDist}")
         prin("optAlgo2.lowLevelDist.probabilities= ${optAlgo2.lowLevelDist.probabilities}")
+        prin("optAlgo3= ${optAlgo3.optimizationTag}")
+        prin("optAlgo3.lowLevelDist= ${optAlgo3.lowLevelDist}")
+        prin("optAlgo3.lowLevelDist.probabilities= ${optAlgo3.lowLevelDist.probabilities}")
+        prin("optAlgo4= ${optAlgo4.optimizationTag}")
+        prin("optAlgo4.lowLevelDist= ${optAlgo4.lowLevelDist}")
+        prin("optAlgo4.lowLevelDist.probabilities= ${optAlgo4.lowLevelDist.probabilities}")
+        prin("optAlgo5= ${optAlgo5.optimizationTag}")
+        prin("optAlgo5.lowLevelDist= ${optAlgo5.lowLevelDist}")
+        prin("optAlgo5.lowLevelDist.probabilities= ${optAlgo5.lowLevelDist.probabilities}")
+        prin("optAlgo6= ${optAlgo6.optimizationTag}")
+        prin("optAlgo6.lowLevelDist= ${optAlgo6.lowLevelDist}")
+        prin("optAlgo6.lowLevelDist.probabilities= ${optAlgo6.lowLevelDist.probabilities}")
         prin("")
 // */
 /*

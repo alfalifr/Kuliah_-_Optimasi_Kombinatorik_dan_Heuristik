@@ -2,7 +2,9 @@ package fp.algo.optimize
 
 import fp.Config
 import fp.Util
+import fp.model.CourseMove
 import fp.model.Schedule
+import sidev.lib.collection.notNullIterator
 import sidev.lib.math.random.DistributedRandom
 import sidev.lib.math.random.distRandomOf
 import sidev.lib.math.random.randomBoolean
@@ -15,6 +17,7 @@ import sidev.lib.math.random.randomBoolean
 sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluation) {
     val lowLevelDist: DistributedRandom<LowLevel> = distRandomOf()
     abstract val optimizationTag: Optimize
+    val isEvaluationTabu= evaluation is Evaluation.TABU
 
     abstract fun optimize(
         init: Schedule,
@@ -30,6 +33,10 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
     ): Pair<Schedule, Double>? =
         optimize(init, courseAdjacencyMatrix, studentCount, iterations)
 
+    //@Suppress(SuppressLiteral.UNCHECKED_CAST)
+    fun Array<CourseMove>.newMoveIterator(): Iterator<CourseMove> =
+        if(isEvaluationTabu) notNullIterator() else iterator()
+
     protected fun nextLowLevel(coefficient: Double): LowLevel {
         //randomBoolean(1 / (1 + exp(1.0 / lowLevelDist.distSum)))
         return if(!lowLevelDist.isEmpty()
@@ -41,16 +48,20 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
     protected fun accept(lowLevel: LowLevel){
         lowLevelDist.add(lowLevel)
     }
+    protected fun remove(lowLevel: LowLevel){
+        lowLevelDist.add(lowLevel, -1)
+    }
     override fun toString(): String = this::class.simpleName!!
     override fun equals(other: Any?): Boolean = other is HighLevel && toString() == other.toString()
     override fun hashCode(): Int = toString().hashCode()
 
-    class SELECTION(maxN: Int = 3, evaluation: Evaluation = Evaluation.BETTER)
-        : HighLevel("sel", maxN, evaluation) {
+    class ROULLETE_WHEEL(maxN: Int = 3, evaluation: Evaluation = Evaluation.BETTER)
+        : HighLevel("rw", maxN, evaluation) {
         override val optimizationTag: Optimize = when(evaluation){
-            Evaluation.BETTER -> Optimize.Hyper_HC
-            is Evaluation.SIMULATED_ANNEALING -> Optimize.Hyper_SA
-            is Evaluation.GREAT_DELUGE -> Optimize.Hyper_GD
+            Evaluation.BETTER -> Optimize.RW_HC
+            is Evaluation.SIMULATED_ANNEALING -> Optimize.RW_SA
+            is Evaluation.GREAT_DELUGE -> Optimize.RW_GD
+            is Evaluation.TABU -> Optimize.RW_TA
         }
         override fun optimize(
             init: Schedule,
@@ -68,7 +79,66 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
                 val lowLevel= nextLowLevel(coefficient)
                 val moves= lowLevel(i, sch, courseAdjacencyMatrix)
                 if(moves != null && evaluation(resDistMat, moves)){
-                    for(move in moves){
+                    for(move in moves.newMoveIterator()){
+                        resDistMat.setPositionMatrix(move)
+                        sch.moveById(
+                            move.id, move.to,
+                            lowLevel != LowLevel.SWAP && lowLevel !is LowLevel.SWAP_N
+                        )
+                    }
+                    lowLevelDist.add(lowLevel, 5)
+                    acceptRes= true
+                } else {
+                    lowLevelDist.add(lowLevel, -1)
+                }
+            }
+            return if(acceptRes) {
+                val finalPenalty= Util.getPenalty(sch, courseAdjacencyMatrix, studentCount)
+                sch.apply {
+                    trimTimeslot()
+                    tag.optimization= optimizationTag
+                } to finalPenalty
+            } else null
+        }
+    }
+
+    class TABU(
+        maxN: Int = 3,
+        tabuLowLevelSize: Int = 5,
+        evaluation: Evaluation = Evaluation.BETTER
+    ): HighLevel("tabu", maxN, evaluation){
+        private val tabuLowLevels = arrayOfNulls<LowLevel>(tabuLowLevelSize)
+        private var tabuLowLevelPointer= 0
+        override val optimizationTag: Optimize = when(evaluation){
+            Evaluation.BETTER -> Optimize.Tabu_HC
+            is Evaluation.SIMULATED_ANNEALING -> Optimize.Tabu_SA
+            is Evaluation.GREAT_DELUGE -> Optimize.Tabu_GD
+            is Evaluation.TABU -> Optimize.Tabu_TA
+        }
+        fun insertAsTabu(lowLevel: LowLevel){
+            tabuLowLevels[tabuLowLevelPointer]= lowLevel
+            tabuLowLevelPointer= (tabuLowLevelPointer + 1) % tabuLowLevels.size
+        }
+        override fun optimize(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            iterations: Int
+        ): Pair<Schedule, Double>? {
+            val resDistMat= Util.getFullDistanceMatrix(init, courseAdjacencyMatrix)
+            //var resPenalty= Util.getPenalty(init, courseAdjacencyMatrix, studentCount)
+            var acceptRes= false
+            val sch= init.clone_()
+            val coefficient= iterations * 40 / 100.0  // probabilitas diambil-ulangnya lowLevel yang sama mencapai hampir 50% saat iterasi mencapai 40% dari panjang total.
+            for(i in 0 until iterations) {
+                //val sch= resSch?.clone_() ?: init.clone_()
+                var lowLevel: LowLevel
+                do {
+                    lowLevel = nextLowLevel(coefficient)
+                } while(lowLevel in tabuLowLevels)
+                val moves= lowLevel(i, sch, courseAdjacencyMatrix)
+                if(moves != null && evaluation(resDistMat, moves)){
+                    for(move in moves.newMoveIterator()){
                         resDistMat.setPositionMatrix(move)
                         sch.moveById(
                             move.id, move.to,
@@ -77,7 +147,9 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
                     }
                     accept(lowLevel)
                     acceptRes= true
-                } //else { resPenalty.value= resPenalty.value }
+                } else {
+                    insertAsTabu(lowLevel)
+                }
             }
             return if(acceptRes) {
                 val finalPenalty= Util.getPenalty(sch, courseAdjacencyMatrix, studentCount)
@@ -113,6 +185,12 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
                 is LowLevel.MOVE_N -> Optimize.GD_MOVEn
                 is LowLevel.SWAP_N -> Optimize.GD_SWAPn
             }
+            is Evaluation.TABU -> when(lowLevel){
+                LowLevel.MOVE -> Optimize.TA_MOVE
+                LowLevel.SWAP -> Optimize.TA_SWAP
+                is LowLevel.MOVE_N -> Optimize.TA_MOVEn
+                is LowLevel.SWAP_N -> Optimize.TA_SWAPn
+            }
         }
         override fun optimize(
             init: Schedule,
@@ -129,7 +207,7 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
                 val moves= lowLevel(i, sch, courseAdjacencyMatrix)
                 //val penalty= Util.getPenalty(sch, courseAdjacencyMatrix, studentCount)
                 if(moves != null && evaluation(resDistMat, moves)){
-                    for(move in moves){
+                    for(move in moves.newMoveIterator()){
                         resDistMat.setPositionMatrix(move)
                         sch.moveById(move.id, move.to, trimAfter)
                     }

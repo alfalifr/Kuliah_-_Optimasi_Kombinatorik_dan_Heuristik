@@ -3,6 +3,9 @@ package fp.algo.optimize
 import fp.Config
 import fp.model.CourseMove
 import fp.model.DistanceMatrix
+import sidev.lib.`val`.SuppressLiteral
+import sidev.lib.check.notNullTo
+import sidev.lib.collection.findIndexed
 import sidev.lib.math.random.randomBoolean
 import kotlin.math.exp
 
@@ -52,6 +55,41 @@ sealed class Evaluation {
             else currentPenaltySum <= currLevel
             currLevel -= currLevel * decayRate
             return accept
+        }
+    }
+    class TABU(tabuMoveSize: Int = 20): Evaluation(){
+        private val tabuMoves= arrayOfNulls<CourseMove>(tabuMoveSize)
+        private var tabuMovePointer= 0
+        override fun evaluate(prevDistanceMatrix: DistanceMatrix, moves: Array<CourseMove>): Boolean {
+            //val cutIndex= mutableListOf<Int>()
+            var cutSize= 0
+            for(i in moves.indices){
+                val move= moves[i]
+                if(tabuMoves.any { it?.id == move.id && it.to == move.to }){
+                    @Suppress(SuppressLiteral.UNCHECKED_CAST)
+                    (moves as Array<CourseMove?>)[i]= null
+                    //cutIndex.add(i)
+                    cutSize++
+                }
+            }
+            val newMoves= if(cutSize == 0) moves else {
+                var diff= 0
+                //val moves= (moves as Array<CourseMove?>)
+                Array(moves.size - cutSize){
+                    var move= moves[it + diff]
+                    while(move == null)
+                        move= moves[it + (++diff)]
+                    move
+                }
+            }
+            val (prevPenaltySum, currentPenaltySum) = getPenaltySum(prevDistanceMatrix, newMoves)
+
+            val size= newMoves.size
+            for(move in newMoves) {
+                tabuMoves[tabuMovePointer]= move
+                tabuMovePointer= (tabuMovePointer + 1) % size
+            }
+            return currentPenaltySum < prevPenaltySum
         }
     }
 

@@ -12,18 +12,27 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
     HC_MOVE("hc_m"),
     SA_MOVE("sa_m"),
     GD_MOVE("gd_m"),
+    TA_MOVE("ta_m"),
     HC_MOVEn("hc_mN"),
     SA_MOVEn("sa_mN"),
     GD_MOVEn("gd_mN"),
+    TA_MOVEn("ta_mN"),
     HC_SWAP("hc_s"),
     SA_SWAP("sa_s"),
     GD_SWAP("gd_s"),
+    TA_SWAP("ta_s"),
     HC_SWAPn("hc_sN"),
     SA_SWAPn("sa_sN"),
     GD_SWAPn("gd_sN"),
-    Hyper_HC("hyp_hc"),
-    Hyper_SA("hyp_sa"),
-    Hyper_GD("hyp_gd")
+    TA_SWAPn("ta_sN"),
+    RW_HC("rw_hc"),
+    RW_SA("rw_sa"),
+    RW_GD("rw_gd"),
+    RW_TA("rw_ta"),
+    Tabu_HC("tabu_hc"),
+    Tabu_SA("tabu_sa"),
+    Tabu_GD("tabu_gd"),
+    Tabu_TA("tabu_ta"),
     ;
 
     companion object {
@@ -185,7 +194,7 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
             evaluation: Evaluation,
             maxN: Int = 3,
             iterations: Int = Config.DEFAULT_ITERATIONS,
-        ): Pair<Schedule, Double>? = HighLevel.SELECTION(maxN, evaluation).optimize(
+        ): Pair<Schedule, Double>? = HighLevel.ROULLETE_WHEEL(maxN, evaluation).optimize(
             init, courseAdjacencyMatrix, studentCount, iterations
         )
 
@@ -195,7 +204,7 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
             studentCount: Int,
             maxN: Int,
             iterations: Int = Config.DEFAULT_ITERATIONS,
-        ): Pair<Schedule, Double>? = HighLevel.SELECTION(maxN, Evaluation.BETTER).optimize(
+        ): Pair<Schedule, Double>? = HighLevel.ROULLETE_WHEEL(maxN, Evaluation.BETTER).optimize(
             init, courseAdjacencyMatrix, studentCount, iterations
         )
 
@@ -207,7 +216,7 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
             initTemperature: Double = Config.DEFAULT_TEMPERATURE_INIT,
             decayRate: Double = Config.DEFAULT_DECAY_RATE,
             iterations: Int = Config.DEFAULT_ITERATIONS,
-        ): Pair<Schedule, Double>? = HighLevel.SELECTION(
+        ): Pair<Schedule, Double>? = HighLevel.ROULLETE_WHEEL(
             maxN, Evaluation.SIMULATED_ANNEALING(initTemperature, decayRate)
         ).optimize(
             init, courseAdjacencyMatrix, studentCount, iterations
@@ -227,11 +236,87 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
                 val initPenalty= Util.getPenalty(init, courseAdjacencyMatrix, studentCount)
                 initPenalty + initPenalty * Config.DEFAULT_LEVEL_INIT_PERCENTAGE
             }
-            return HighLevel.SELECTION(
+            return HighLevel.ROULLETE_WHEEL(
                 maxN, Evaluation.GREAT_DELUGE(initLevel, decayRate)
             ).optimize(
                 init, courseAdjacencyMatrix, studentCount, iterations
             )
         }
+
+        fun hyperSelection_ta(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            maxN: Int,
+            tabuMoveSize: Int = 20,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? = HighLevel.ROULLETE_WHEEL(
+            maxN, Evaluation.TABU(tabuMoveSize)
+        ).optimize(
+            init, courseAdjacencyMatrix, studentCount, iterations
+        )
+
+
+        fun tabu_hc(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            maxN: Int,
+            tabuLowLevelSize: Int = 5,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? = HighLevel.TABU(maxN, tabuLowLevelSize, Evaluation.BETTER).optimize(
+            init, courseAdjacencyMatrix, studentCount, iterations
+        )
+
+        fun tabu_sa(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            maxN: Int,
+            tabuLowLevelSize: Int = 5,
+            initTemperature: Double = Config.DEFAULT_TEMPERATURE_INIT,
+            decayRate: Double = Config.DEFAULT_DECAY_RATE,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? = HighLevel.TABU(
+            maxN, tabuLowLevelSize, Evaluation.SIMULATED_ANNEALING(initTemperature, decayRate)
+        ).optimize(
+            init, courseAdjacencyMatrix, studentCount, iterations
+        )
+
+        fun tabu_gd(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            maxN: Int,
+            tabuLowLevelSize: Int = 5,
+            initLevel: Double = -1.0,
+            decayRate: Double = Config.DEFAULT_DECAY_RATE,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? {
+            @Suppress(SuppressLiteral.NAME_SHADOWING)
+            val initLevel= if(initLevel > 0) initLevel else {
+                val initPenalty= Util.getPenalty(init, courseAdjacencyMatrix, studentCount)
+                initPenalty + initPenalty * Config.DEFAULT_LEVEL_INIT_PERCENTAGE
+            }
+            return HighLevel.TABU(
+                maxN, tabuLowLevelSize, Evaluation.GREAT_DELUGE(initLevel, decayRate)
+            ).optimize(
+                init, courseAdjacencyMatrix, studentCount, iterations
+            )
+        }
+
+        fun tabu_ta(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            maxN: Int,
+            tabuLowLevelSize: Int = 5,
+            tabuMoveSize: Int = 20,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? = HighLevel.TABU(
+            maxN, tabuLowLevelSize, Evaluation.TABU(tabuMoveSize)
+        ).optimize(
+            init, courseAdjacencyMatrix, studentCount, iterations
+        )
     }
 }
