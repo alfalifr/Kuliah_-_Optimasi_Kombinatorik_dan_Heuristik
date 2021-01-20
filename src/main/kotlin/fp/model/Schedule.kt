@@ -17,11 +17,14 @@ data class Schedule(
 //    var title: String = "<schedule>",
 //    var fileName: String? = "",
 //    var algo: Any?= null,
+    var initStudentCount: Int = 0,
     var penalty: Double = -1.0, //Nilai default
     val tag: ScheduleTag= ScheduleTag(),
 ): Iterable<Pair<Course, Timeslot>>, Cloneable<Schedule> {
     val timeslotCount: Int
         get()= assignments.size
+    val courseCount: Int
+        get()= assignments.map { it.value.size }.sum()
 
     fun getAssignment(timeslotNo: Int): Assignment? = assignments.find { it.key.no == timeslotNo }?.let {
         Assignment(it.key, it.value)
@@ -30,7 +33,8 @@ data class Schedule(
         ?: throw IllegalArgExc(paramExcepted=arrayOf("timeslotNo"), detailMsg="Tidak ada timeslot dengan `timeslotNo` ($timeslotNo) tidak terdapat pada schedule ini.")
     //assignments.find { it.timeslot.no == no }
     fun getCourseTimeslot(courseId: Int): Timeslot? = assignments.find { it.value.any { it.id == courseId } }?.key
-    fun getTimeslot(no: Int): Timeslot = assignments.keys.find { it.no == no }
+    fun getTimeslot(no: Int): Timeslot? = assignments.keys.find { it.no == no }
+    fun getTimeslotAssert(no: Int): Timeslot = getTimeslot(no)
         ?: throw IllegalArgExc(paramExcepted=arrayOf("no"), detailMsg="Tidak ada timeslot dengan `no` ($no) tidak terdapat pada schedule ini.")
     fun getCourse(courseId: Int): Course? {
         var courseIndex= -1
@@ -202,16 +206,36 @@ data class Schedule(
             it.key
         }
     }
-/*
-    fun iterator(orderedByCourse: Boolean, start: Int= 0): Iterator<Pair<Course, Timeslot>> = if(!orderedByCourse) iterator()
-    else object: Iterator<Pair<Course, Timeslot>> {
-        var i= start
-        var next: Pair<Course, Timeslot>?= null
+///*
+    fun iterator(orderedByCourse: Boolean, start: Int= 0): Iterator<Pair<Course, Timeslot>> =
+        if(!orderedByCourse) iterator()
+        else object: Iterator<Pair<Course, Timeslot>> {
+            var i= start
+            var next: Pair<Course, Timeslot>?= null
 
-        override fun hasNext(): Boolean = getCourseTimeslot(i)?.also { next= assignments[it]!!.find { it.id == i }!! to it } != null
-        override fun next(): Pair<Course, Timeslot> = next!!
-    }
- */
+            override fun hasNext(): Boolean {
+                var crs: Course?= null
+                var timeslot: Timeslot?= null
+                //prine("Schedule.iterator() orderedByCourse= $orderedByCourse")
+                return assignments.find { e ->
+                    //prine("Schedule.iterator().find() e= $e")
+                    e.value.findIndexed {
+                        //prine("Schedule.iterator().find().findId() it= $it")
+                        //prine("Schedule.iterator().find().findId() it.id= ${it.value.id} i= $i")
+                        it.value.id == i
+                    }.notNull {
+                        crs= it.value
+                        timeslot= e.key
+                    } != null
+                }.notNull {
+                    next= crs!! to timeslot!!
+                    i++
+                } != null
+            }
+                //getCourseTimeslot(++i)?.also { next= assignments[it]!!.find { it.id == i }!! to it } != null
+            override fun next(): Pair<Course, Timeslot> = next!!
+        }
+// */
 
 
     /**
@@ -285,7 +309,7 @@ data class Schedule(
         for((key, value) in assignments)
             newAssignments[key]= ArrayList(value)
         return Schedule(
-            newAssignments, penalty, tag.copy()
+            newAssignments, initStudentCount, penalty, tag.copy()
         )
     }
 }

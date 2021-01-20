@@ -10,6 +10,7 @@ import fp.algo.optimize.HighLevel
 import fp.algo.optimize.Optimize
 import fp.model.*
 import org.junit.Test
+import sidev.lib.check.contentEquals
 import sidev.lib.check.isNull
 import sidev.lib.collection.copy
 import sidev.lib.collection.forEachIndexed
@@ -18,8 +19,10 @@ import sidev.lib.console.prine
 import sidev.lib.console.prinw
 import sidev.lib.math.random.probabilities
 import java.io.File
+import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTime
+import sidev.lib.check.contentEquals
 
 class FpTest {
     @Test
@@ -106,7 +109,7 @@ class FpTest {
         val studentDir= "$folderDir\\car-f-92.crs" //hec-s-92.stu" //car-s-91.stu" //car-f-92.stu"
 
         val students= Util.readStudent(studentDir)
-        val courses= Util.toListOfCourses(Util.readCourse(courseDir))
+        val courses= Util.toListOfCourses(Util.readCourseRaw(courseDir))
 
         prin(students.size)
         prin(courses.size)
@@ -153,7 +156,7 @@ class FpTest {
         prin("fileName= $fileName index= $nameIndex")
 
         val students= Util.readStudent(studentDir)
-        val courses= Util.toListOfCourses(Util.readCourse(courseDir))
+        val courses= Util.toListOfCourses(Util.readCourseRaw(courseDir))
 
         prin("students.size= ${students.size}")
         prin("courses.size= ${courses.size}")
@@ -238,7 +241,7 @@ class FpTest {
             prin(it)
         }
         prin("\n\n ========= crs file ============= \n\n")
-        Util.readCourse(crsFile).forEach {
+        Util.readCourseRaw(crsFile).forEach {
             prin(it)
         }
     }
@@ -250,7 +253,7 @@ class FpTest {
 
         val students= Util.readStudent(stuFile)
 
-        val courses= Util.readCourse(crsFile)
+        val courses= Util.readCourseRaw(crsFile)
 
         val adj= Util.createCourseAdjacencyMatrix_Raw(courses.size, students)
 
@@ -370,7 +373,7 @@ class FpTest {
     @ExperimentalTime
     @Test
     fun realAssignmentTest_6(){
-        val fileIndex= 3
+        val fileIndex= 5
         val fileName= Config.fileNames[fileIndex]
         val maxTimeslot= Config.maxTimeslot[fileIndex]
         val adjMatContainer = mutableMapOf<String, Array<IntArray>>()
@@ -380,6 +383,11 @@ class FpTest {
 
         val adjMat= adjMatContainer[fileName]!!
         val studCount= studCountContainer[fileName]!!
+
+        val adjMat_f= Util.readAdjMatrix(Config.getAdjMatFileDir(fileIndex))
+
+        //var same= true
+        prin(adjMat.contentDeepEquals(adjMat_f))
 
         val initPenalty= Util.getPenalty(bestSch, adjMat, studCount)
 
@@ -972,5 +980,85 @@ class FpTest {
         prin("======== after move ===========")
         sch.moveById(3, 1)
         prin(sch)
+    }
+
+    @Test
+    fun crsxTesg(){
+        val crs1= Course(0, 1, 2, 3)
+        val crs2= Course(1, 11, 21, 3)
+        val crs3= Course(2, 11, 21, 3)
+
+        val sch= Schedule()
+        sch.assignments[Timeslot(0)] = mutableListOf(crs3)
+        sch.assignments[Timeslot(1)] = mutableListOf(crs1, crs2)
+
+        val ls= listOf(crs1, crs2, crs3)
+
+        //Util.saveDetailedCourses(File(Config.getDetailedCourseFileDir(0)), ls)
+
+
+        val crsList= mutableListOf<Course>()
+        sch.iterator(true).forEach {
+            crsList.add(it.first)
+        }
+        Util.saveDetailedCourses(File(Config.getDetailedCourseFileDir(0)), crsList)
+    }
+
+
+    @ExperimentalTime
+    @Test
+    fun initSolution_(){
+        val crs1= Course(0, 1)
+        val crs2= Course(1, 11)
+        val crs3= Course(2, 14)
+        val crs4= Course(3, 15)
+        val crs5= Course(4, 16)
+
+        val sch1= Schedule()
+        val sch2= Schedule()
+
+        sch1.assignments[Timeslot(0)] = mutableListOf(crs3, crs2)
+        sch1.assignments[Timeslot(1)] = mutableListOf(crs4)
+
+        sch2.assignments[Timeslot(0)] = mutableListOf(crs1, crs5)
+        sch2.assignments[Timeslot(1)] = mutableListOf(crs3)
+
+        val test1= TestResult(sch1, Duration.INFINITE)
+        val test2= TestResult(sch2, Duration.ZERO)
+
+        val tag1= ScheduleTag(Construct.LaD, Optimize.GD_MOVE, Config.fileNames[0])
+        val tag2= ScheduleTag(Construct.X_LaCE, Optimize.TA_GD, Config.fileNames[1])
+
+        val pair1= tag1 to test1
+        val pair2= tag2 to test2
+
+        val ls= listOf(pair1, pair2)
+
+        Util.saveDetailedCourses(ls)
+/*
+        val adjMatContainer = mutableMapOf<String, Array<IntArray>>()
+        val stucContainer = mutableMapOf<String, Int>()
+        val results= Util.runAllScheduling(adjMatContainer, stucContainer)
+        prin("\n")
+        val bestSchedulings= Util.getBestSchedulings(results)
+
+        Duration.INFINITE
+
+        prin("\n\n\n=============== Hasil Semua Scheduling ==========")
+        bestSchedulings.forEach { (tag, sc) -> prin("fileName= ${tag.fileName} sc= ${sc?.result?.miniString()} duration= ${sc?.duration}") }
+
+        prin("\n\n\n=============== Hasil Semua Scheduling ==========")
+        val conflicts= Util.checkConflicts(results, )
+        bestSchedulings.forEach { (tag, sc) -> prin("fileName= ${tag.fileName} sc= ${sc?.result?.miniString()} duration= ${sc?.duration}") }
+ */
+/*
+        Util.saveAllAdjMatrix(adjMatContainer)
+        Util.saveAllStudentCounts(stucContainer)
+        Util.saveDetailedCourses(bestSchedulings)
+        Util.saveBestSchedulings(bestSchedulings)
+        Util.saveBestSchedulingRes(bestSchedulings)
+        Util.saveAllResult(results)
+        Util.saveFinalSol(bestSchedulings)
+ */
     }
 }

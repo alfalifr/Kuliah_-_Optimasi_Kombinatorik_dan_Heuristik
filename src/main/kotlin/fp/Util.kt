@@ -4,12 +4,15 @@ package fp
 import fp.Config.COURSE_INDEX_OFFSET
 import fp.Config.DATASET_DIR
 import fp.Config.FILE_EXTENSION_COURSE
+import fp.Config.FILE_EXTENSION_COURSE_DETAILED
 import fp.Config.FILE_EXTENSION_EXM
+import fp.Config.FILE_EXTENSION_MAT
 import fp.Config.FILE_EXTENSION_RES
 import fp.Config.FILE_EXTENSION_SLN
 import fp.Config.FILE_EXTENSION_SOLUTION
 import fp.Config.FILE_EXTENSION_STUDENT
 import fp.algo.construct.Construct
+import fp.algo.optimize.Optimize
 import fp.model.*
 import sidev.lib.`val`.SuppressLiteral
 import sidev.lib.collection.array.forEachIndexed
@@ -77,9 +80,21 @@ object Util {
     /**
      * Return 2 kolom list, kolom 1 berisi id course, kolom 2 berisi jml mhs yg ngambil course itu.
      */
-    fun readCourse(dir: String): List<List<Int>> = readIntTableFromFile(
+    fun readCourseRaw(dir: String): List<List<Int>> = readIntTableFromFile(
         if(dir.endsWith(FILE_EXTENSION_COURSE)) dir else "$dir$FILE_EXTENSION_COURSE", FILE_EXTENSION_COURSE
     )
+
+    /**
+     * Membaca data [Course] langsung dari file. Data yang dimaksud adalah data [Course] yang lengkap.
+     * Bukan hanya id dan jumlah student-nya.
+     */
+    fun readCourse(dir: String): List<Course> = readIntTableFromFile(
+        if(dir.endsWith(FILE_EXTENSION_COURSE_DETAILED)) dir else "$dir$FILE_EXTENSION_COURSE_DETAILED", FILE_EXTENSION_COURSE_DETAILED
+    ).run {
+        map {
+            Course(it[0], it[1], it[2], it[3])
+        }
+    }
 
     /**
      * Return nested list yg berisi kolom ganda. Tiap baris merupakan tiap mhs.
@@ -88,6 +103,71 @@ object Util {
     fun readStudent(dir: String): List<List<Int>> = readIntTableFromFile(
         if(dir.endsWith(FILE_EXTENSION_STUDENT)) dir else "$dir$FILE_EXTENSION_STUDENT", FILE_EXTENSION_STUDENT
     )
+
+    /**
+     * Return nested list yg berisi kolom ganda. Tiap baris merupakan tiap mhs.
+     * Tiap kolom adalah id course yg diambilnya.
+     */
+    fun readScheduleRaw(dir: String): List<List<Int>> = readIntTableFromFile(
+        if(dir.endsWith(FILE_EXTENSION_SOLUTION)) dir else "$dir$FILE_EXTENSION_SOLUTION", FILE_EXTENSION_SOLUTION
+    )
+
+    /**
+     * Membaca `.sol` dan `.crsx` untuk mendapatkan data [Schedule].
+     */
+    fun readSchedule(fileNameIndex: Int): Schedule {
+        val schDir= Config.getSolutionFileDir(fileNameIndex)
+        val schMat= readScheduleRaw(schDir)
+        val crsDir= Config.getDetailedCourseFileDir(fileNameIndex)
+        val crsList= readCourse(crsDir)
+
+        val sch= Schedule()
+        for(ls in schMat) {
+            val cId = ls[0] - COURSE_INDEX_OFFSET
+            val tId = ls[1]
+            val timeslot = (sch.getTimeslot(tId) ?: Timeslot(tId).apply {
+                sch.assignments[this] = mutableListOf()
+            })
+            sch.assignments[timeslot]!! += crsList[cId] //Anggapannya `crsList` dan course raw urut id nya.
+        }
+        val stucFile= File(Config.getStudentCountFileDir(fileNameIndex))
+        if(stucFile.exists()){
+            val stuc= stucFile.readLines()[0].toInt()
+            sch.initStudentCount= stuc
+        }
+        val schInfoFile= File(Config.getScheduleInfoFileDir(fileNameIndex))
+        //prine("readSchedule() schInfoFile.exists()= ${schInfoFile.exists()}")
+        if(schInfoFile.exists()){
+            val schInfo= schInfoFile.readLines()[0].split(" ")
+            val initStudCount= schInfo[0].toInt()
+            val penalty= schInfo[1].toDouble()
+            val constructCode= schInfo[2]
+            val optCode= schInfo[3]
+            val fileName= Config.fileNames[fileNameIndex]
+
+            sch.initStudentCount = initStudCount
+            sch.penalty = penalty
+            sch.tag.construct = Construct[constructCode]
+            sch.tag.optimization = Optimize[optCode]
+            sch.tag.fileName = fileName
+            //prine("readSchedule() schInfo= $schInfo penalty= $penalty")
+        }
+        return sch
+    }
+
+    /**
+     * Return nested list yg berisi kolom ganda. Tiap baris merupakan tiap mhs.
+     * Tiap kolom adalah id course yg diambilnya.
+     */
+    fun readAdjMatrix(dir: String): Array<IntArray> = readIntTableFromFile(
+        if(dir.endsWith(FILE_EXTENSION_MAT)) dir else "$dir$FILE_EXTENSION_MAT", FILE_EXTENSION_MAT
+    ).run {
+        val size= size
+        Array(size){
+            val ls= this[it]
+            IntArray(size){ ls[it] }
+        }
+    }
 
     fun toListOfCourses(courseTable: List<List<Int>>, degreeList: List<Int>?= null): List<Course> =
         if(degreeList == null) courseTable.mapIndexed { i, list -> Course(list.first(), list[1]) }
@@ -379,6 +459,7 @@ object Util {
         }
         return (sum / studentCount).also { //(sum / 2)
             schedule.penalty= it
+            schedule.initStudentCount= studentCount
         }
     }
     fun getPenalty(schedule: FlatSchedule, courseAdjacencyMatrix: Array<IntArray>, studentCount: Int): Double {
@@ -481,7 +562,7 @@ object Util {
         prin(" ================================ \n\n")
 
         val students= readStudent(studentDir)
-        val courses= toListOfCourses(readCourse(courseDir))
+        val courses= toListOfCourses(readCourseRaw(courseDir))
 
         prin("students.size= ${students.size}")
         prin("courses.size= ${courses.size}")
@@ -719,6 +800,8 @@ object Util {
     ): Map<String, List<TestResult<Schedule>>>{
         val res= mutableMapOf<String, List<TestResult<Schedule>>>()
         for((i, fileName) in Config.fileNames.withIndex()){
+        //for(i in 0 until 2){ //TODO!!!
+            //val fileName= Config.fileNames[i]
             res[fileName]= runScheduling(i, false, adjMatContainer, studentCountContainer) //Config.maxTimeslot[i],
         }
         return res
@@ -916,6 +999,160 @@ object Util {
         }
         return true
     }
+
+    fun saveAdjMat(matFile: File, mat: Array<IntArray>): Boolean {
+        matFile.delete()
+        for(arr in mat) {
+            val strLine= arr.joinToString(separator = " ")
+            if(
+                !FileUtil.saveln(
+                    matFile,
+                    strLine,
+                    true
+                )
+            ) return false
+        }
+        return true
+    }
+
+    fun saveDetailedCourses(crsxFile: File, crss: List<Course>, newFile: Boolean= true): Boolean {
+        if(newFile) crsxFile.delete()
+        for(crs in crss) {
+            val strLine= "${crs.id} ${crs.studentCount} ${crs.degree} ${crs.conflictingStudentCount}"
+            if(
+                !FileUtil.saveln(
+                    crsxFile,
+                    strLine,
+                    true
+                )
+            ) return false.also {
+                prinw("Terjadi kesalahan saat menyimpan data saveDetailedCourses()")
+            }
+        }
+        return true
+    }
+
+    fun saveAllAdjMatrix(
+        adjMatContainer: Map<String, Array<IntArray>>,
+        isFileNameOrdered: Boolean = true
+    ){
+        if(isFileNameOrdered){
+            for((i, e) in adjMatContainer.iterator().withIndex()) {
+                val file= File(Config.getAdjMatFileDir(i))
+                saveAdjMat(file, e.value)
+            }
+        } else {
+            for((key, value) in adjMatContainer) {
+                val i= Config.getFileNameIndex(key)
+                val file= File(Config.getAdjMatFileDir(i))
+                saveAdjMat(file, value)
+            }
+        }
+    }
+
+    fun saveBestSchedulingRes(bestSchedulings: List<Pair<ScheduleTag, TestResult<Schedule>?>>){
+        for((tag, testRes) in bestSchedulings) {
+            if(testRes != null){
+                val fileDir= DATASET_DIR +"\\${tag.fileName!!}_init_sol.csv"
+                val file= File(fileDir)
+                file.delete()
+                FileUtil.saveln(file, "penalty\tduration", false)
+                FileUtil.saveln(file, "${testRes.result.penalty}\t${testRes.duration.inMicroseconds}", true)
+            }
+        }
+    }
+
+    fun saveBestSchedulings(
+        bestSchedulings: List<Pair<ScheduleTag, TestResult<Schedule>?>>,
+        isFileNameOrdered: Boolean = true
+    ){
+        if(isFileNameOrdered){
+            for((i, e) in bestSchedulings.withIndex()) {
+                val file= File(Config.getScheduleInfoFileDir(i))
+                e.second?.also { (sch, durr) ->
+                    saveSchedulingInfo(file, sch)
+                }
+            }
+        } else {
+            for((tag, testRes) in bestSchedulings) {
+                if(testRes != null){
+                    val i= Config.getFileNameIndex(tag.fileName!!)
+                    val file= File(Config.getScheduleInfoFileDir(i))
+                    saveSchedulingInfo(file, testRes.result)
+                }
+            }
+        }
+    }
+    fun saveSchedulingInfo(schiFile: File, sch: Schedule): Boolean {
+        val penalty= sch.penalty
+        val initStudCount= sch.initStudentCount
+        val (construct, opt, fileName)= sch.tag
+        val strLine= "$initStudCount $penalty ${construct.code} ${opt.code} $fileName"
+        //prine("saveSchedulingInfo() penalty= $penalty sch= ${sch.miniString()}")
+        return FileUtil.saveln(schiFile, strLine, false)
+    }
+
+    fun saveDetailedCourses(
+        bestSchedulings: List<Pair<ScheduleTag, out TestResult<Schedule>?>>,
+        isFileNameOrdered: Boolean = true,
+        startIndex: Int = COURSE_INDEX_OFFSET
+    ){
+        //prine("saveDetailedCourses() isFileNameOrdered= $isFileNameOrdered bestSchedulings $bestSchedulings")
+        if(isFileNameOrdered){
+            for((i, e) in bestSchedulings.withIndex()) {
+                val file= File(Config.getDetailedCourseFileDir(i))
+                file.delete()
+                //prine("for i= $i e= $e file= $file")
+                e.second?.also { (res, durr) ->
+                    //prine("i= $i MASUK!!! res= $res durr= $durr")
+                    val crsList= mutableListOf<Course>()
+                    res.iterator(true, startIndex).forEach {
+                        crsList.add(it.first)
+                    }
+                    //prine("i= $i crsList= $crsList")
+                    saveDetailedCourses(file, crsList, false)
+                }
+            }
+        } else {
+            for((tag, res) in bestSchedulings) {
+                val i= Config.getFileNameIndex(tag.fileName!!)
+                val file= File(Config.getDetailedCourseFileDir(i))
+                file.delete()
+                res?.also { (res, durr) ->
+                    val crsList= mutableListOf<Course>()
+                    res.iterator(true, startIndex).forEach {
+                        crsList.add(it.first)
+                    }
+                    saveDetailedCourses(file, crsList, false)
+                }
+            }
+        }
+    }
+
+    fun saveAllStudentCounts(
+        studentCountContainer: Map<String, Int>,
+        isFileNameOrdered: Boolean = true
+    ){
+        if(isFileNameOrdered){
+            for((i, e) in studentCountContainer.iterator().withIndex()) {
+                val file= File(Config.getStudentCountFileDir(i))
+                saveStudentCount(file, e.value)
+            }
+        } else {
+            for((fileName, res) in studentCountContainer) {
+                val i= Config.getFileNameIndex(fileName)
+                val file= File(Config.getStudentCountFileDir(i))
+                saveStudentCount(file, res)
+            }
+        }
+    }
+
+    fun saveStudentCount(stucFile: File, count: Int): Boolean =
+        FileUtil.saveln(stucFile, count.toString(), false)
+
+    fun saveStudentCount(fileNameIndex: Int, count: Int): Boolean =
+        FileUtil.saveln(Config.getStudentFileDir(fileNameIndex), count.toString(), false)
+
     fun saveSln(slnFile: File): Boolean {
         slnFile.delete()
         val itr= Config.fileNames.iterator()

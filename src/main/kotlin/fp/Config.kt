@@ -25,9 +25,26 @@ object Config {
     const val FILE_EXTENSION_RES = ".res"
     const val FILE_EXTENSION_EXM = ".exm"
     const val FILE_EXTENSION_SLN = ".sln"
+    /**
+     * Untuk jumlah student. Ekstensi ini merupakan tambahan dari programmer.
+     */
+    const val FILE_EXTENSION_STUDENT_COUNT = ".stuc"
+    /**
+     * Untuk adjacencyMatrix. Ekstensi ini merupakan tambahan dari programmer.
+     */
+    const val FILE_EXTENSION_MAT = ".matr"
+    /**
+     * Untuk list Course yang berupa objek. Ekstensi ini merupakan tambahan dari programmer.
+     */
+    const val FILE_EXTENSION_COURSE_DETAILED = ".crsx"
+    /**
+     * Untuk informasi tambahan terkait [Schedule], seperti penalty. Ekstensi ini merupakan tambahan dari programmer.
+     */
+    const val FILE_EXTENSION_SCHEDULE_INFO = ".sch"
 
     const val DEFAULT_TEMPERATURE_INIT: Double = 35.0
     const val DEFAULT_LEVEL_INIT_PERCENTAGE: Double = 0.4
+    const val DEFAULT_TABU_MOVE_PERCENTAGE: Double = 0.1
     const val DEFAULT_DECAY_RATE: Double = 0.12
 
     /**
@@ -39,9 +56,13 @@ object Config {
     }
     fun getFileDir(nameIndex: Int): String = "$DATASET_DIR\\${fileNames[nameIndex]}"
     fun getCourseFileDir(nameIndex: Int): String = "${getFileDir(nameIndex)}$FILE_EXTENSION_COURSE"
+    fun getDetailedCourseFileDir(nameIndex: Int): String = "${getFileDir(nameIndex)}$FILE_EXTENSION_COURSE_DETAILED"
     fun getStudentFileDir(nameIndex: Int): String = "${getFileDir(nameIndex)}$FILE_EXTENSION_STUDENT"
+    fun getStudentCountFileDir(nameIndex: Int): String = "${getFileDir(nameIndex)}$FILE_EXTENSION_STUDENT_COUNT"
     fun getSolutionFileDir(nameIndex: Int): String = "${getFileDir(nameIndex)}$FILE_EXTENSION_SOLUTION"
     fun getResFileDir(nameIndex: Int): String = "${getFileDir(nameIndex)}$FILE_EXTENSION_RES"
+    fun getScheduleInfoFileDir(nameIndex: Int): String = "${getFileDir(nameIndex)}$FILE_EXTENSION_SCHEDULE_INFO"
+    fun getAdjMatFileDir(nameIndex: Int): String = "${getFileDir(nameIndex)}$FILE_EXTENSION_MAT"
 
 //    val fileNameItr: Iterator<String> get()= fileNames.iterator()
 }

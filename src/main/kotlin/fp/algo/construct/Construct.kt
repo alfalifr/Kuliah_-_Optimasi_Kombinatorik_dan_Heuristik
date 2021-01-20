@@ -5,6 +5,8 @@ import fp.model.Course
 import fp.model.Schedule
 import fp.model.Timeslot
 import sidev.lib.collection.fastSortedWith
+import sidev.lib.exception.IllegalArgExc
+
 //import fp.Algo.Component
 
 /**
@@ -100,6 +102,12 @@ enum class Construct(val code: String, vararg val component: Component) {
     override fun toString(): String = name //.replace("_", " ") //.capitalize()
 
     companion object {
+        operator fun get(code: String): Construct = enumValues<Construct>().find {
+            it.code == code
+        } ?: throw IllegalArgExc(
+            paramExcepted = arrayOf("code"),
+            detailMsg = "Enum `Construct` tidak punya entry dengan `code` ($code)"
+        )
 
         /**
          * [courses] merupakan List dg isi [Course.degree] yang udah diisikan.

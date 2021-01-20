@@ -201,7 +201,9 @@ sealed class HighLevel(val code: String, val maxN: Int, val evaluation: Evaluati
             val resDistMat= Util.getFullDistanceMatrix(init, courseAdjacencyMatrix)
             var acceptRes= false
             val sch= init.clone_()
-            val trimAfter= lowLevel != LowLevel.SWAP && lowLevel !is LowLevel.SWAP_N
+            val trimAfter= lowLevel != LowLevel.SWAP
+                    && lowLevel !is LowLevel.SWAP_N
+                    && lowLevel !is LowLevel.MOVE_N
             for(i in 0 until iterations) {
                 //val sch= resSch?.clone_() ?: init.clone_()
                 val moves= lowLevel(i, sch, courseAdjacencyMatrix)

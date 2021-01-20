@@ -1,8 +1,10 @@
 package fp.algo.optimize
 
 import fp.*
+import fp.algo.construct.Construct
 import fp.model.Schedule
 import sidev.lib.`val`.SuppressLiteral
+import sidev.lib.exception.IllegalArgExc
 
 /**
  * Entry point convenient untuk melakukan optimasi terhadap initial solution.
@@ -36,6 +38,13 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
     ;
 
     companion object {
+        operator fun get(code: String): Optimize = enumValues<Optimize>().find {
+            it.code == code
+        } ?: throw IllegalArgExc(
+            paramExcepted = arrayOf("code"),
+            detailMsg = "Enum `Optimize` tidak punya entry dengan `code` ($code)"
+        )
+
         fun lin_move(
             init: Schedule,
             courseAdjacencyMatrix: Array<IntArray>,
@@ -87,6 +96,57 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
             init, courseAdjacencyMatrix, studentCount, Evaluation.BETTER, iterations
         )
 
+        fun lin_move_sa(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            initTemperature: Double = Config.DEFAULT_TEMPERATURE_INIT,
+            decayRate: Double = Config.DEFAULT_DECAY_RATE,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? = lin_move(
+            init, courseAdjacencyMatrix, studentCount,
+            Evaluation.SIMULATED_ANNEALING(initTemperature, decayRate),
+            iterations
+        )
+
+        fun lin_move_gd(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            initLevel: Double = -1.0,
+            decayRate: Double = Config.DEFAULT_DECAY_RATE,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? {
+            @Suppress(SuppressLiteral.NAME_SHADOWING)
+            val initLevel= if(initLevel > 0) initLevel else {
+                val initPenalty= Util.getPenalty(init, courseAdjacencyMatrix, studentCount)
+                initPenalty + initPenalty * Config.DEFAULT_LEVEL_INIT_PERCENTAGE
+            }
+            return lin_move(
+                init, courseAdjacencyMatrix, studentCount,
+                Evaluation.GREAT_DELUGE(initLevel, decayRate),
+                iterations
+            )
+        }
+
+        fun lin_move_ta(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            tabuMoveSize: Int = -1,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? {
+            @Suppress(SuppressLiteral.NAME_SHADOWING)
+            val tabuMoveSize= if(tabuMoveSize > 0) tabuMoveSize
+                else (init.courseCount * Config.DEFAULT_TABU_MOVE_PERCENTAGE).toInt()
+
+            return lin_move(
+                init, courseAdjacencyMatrix, studentCount,
+                Evaluation.TABU(tabuMoveSize),
+                iterations
+            )
+        }
+
         fun lin_moveN_hc(
             init: Schedule,
             courseAdjacencyMatrix: Array<IntArray>,
@@ -132,6 +192,25 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
             )
         }
 
+        fun lin_moveN_ta(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            n: Int,
+            tabuMoveSize: Int = -1,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? {
+            @Suppress(SuppressLiteral.NAME_SHADOWING)
+            val tabuMoveSize= if(tabuMoveSize > 0) tabuMoveSize
+            else (init.courseCount * Config.DEFAULT_TABU_MOVE_PERCENTAGE).toInt()
+
+            return lin_moveN(
+                init, courseAdjacencyMatrix, studentCount, n,
+                Evaluation.TABU(tabuMoveSize),
+                iterations
+            )
+        }
+
         fun lin_swap_hc(
             init: Schedule,
             courseAdjacencyMatrix: Array<IntArray>,
@@ -140,6 +219,57 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
         ): Pair<Schedule, Double>? = lin_swap(
             init, courseAdjacencyMatrix, studentCount, Evaluation.BETTER, iterations
         )
+
+        fun lin_swap_sa(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            initTemperature: Double = Config.DEFAULT_TEMPERATURE_INIT,
+            decayRate: Double = Config.DEFAULT_DECAY_RATE,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? = lin_swap(
+            init, courseAdjacencyMatrix, studentCount,
+            Evaluation.SIMULATED_ANNEALING(initTemperature, decayRate),
+            iterations
+        )
+
+        fun lin_swap_gd(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            initLevel: Double = -1.0,
+            decayRate: Double = Config.DEFAULT_DECAY_RATE,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? {
+            @Suppress(SuppressLiteral.NAME_SHADOWING)
+            val initLevel= if(initLevel > 0) initLevel else {
+                val initPenalty= Util.getPenalty(init, courseAdjacencyMatrix, studentCount)
+                initPenalty + initPenalty * Config.DEFAULT_LEVEL_INIT_PERCENTAGE
+            }
+            return lin_swap(
+                init, courseAdjacencyMatrix, studentCount,
+                Evaluation.GREAT_DELUGE(initLevel, decayRate),
+                iterations
+            )
+        }
+
+        fun lin_swap_ta(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            tabuMoveSize: Int = -1,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? {
+            @Suppress(SuppressLiteral.NAME_SHADOWING)
+            val tabuMoveSize= if(tabuMoveSize > 0) tabuMoveSize
+            else (init.courseCount * Config.DEFAULT_TABU_MOVE_PERCENTAGE).toInt()
+
+            return lin_swap(
+                init, courseAdjacencyMatrix, studentCount,
+                Evaluation.TABU(tabuMoveSize),
+                iterations
+            )
+        }
 
         fun lin_swapN_hc(
             init: Schedule,
@@ -182,7 +312,26 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
             }
             return lin_swapN(
                 init, courseAdjacencyMatrix, studentCount, n,
-                Evaluation.SIMULATED_ANNEALING(initLevel, decayRate),
+                Evaluation.GREAT_DELUGE(initLevel, decayRate),
+                iterations
+            )
+        }
+
+        fun lin_swapN_ta(
+            init: Schedule,
+            courseAdjacencyMatrix: Array<IntArray>,
+            studentCount: Int,
+            n: Int,
+            tabuMoveSize: Int = -1,
+            iterations: Int = Config.DEFAULT_ITERATIONS,
+        ): Pair<Schedule, Double>? {
+            @Suppress(SuppressLiteral.NAME_SHADOWING)
+            val tabuMoveSize= if(tabuMoveSize > 0) tabuMoveSize
+            else (init.courseCount * Config.DEFAULT_TABU_MOVE_PERCENTAGE).toInt()
+
+            return lin_swapN(
+                init, courseAdjacencyMatrix, studentCount, n,
+                Evaluation.TABU(tabuMoveSize),
                 iterations
             )
         }
@@ -250,11 +399,17 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
             maxN: Int,
             tabuMoveSize: Int = 20,
             iterations: Int = Config.DEFAULT_ITERATIONS,
-        ): Pair<Schedule, Double>? = HighLevel.ROULLETE_WHEEL(
-            maxN, Evaluation.TABU(tabuMoveSize)
-        ).optimize(
-            init, courseAdjacencyMatrix, studentCount, iterations
-        )
+        ): Pair<Schedule, Double>? {
+            @Suppress(SuppressLiteral.NAME_SHADOWING)
+            val tabuMoveSize= if(tabuMoveSize > 0) tabuMoveSize
+            else (init.courseCount * Config.DEFAULT_TABU_MOVE_PERCENTAGE).toInt()
+
+            return HighLevel.ROULLETE_WHEEL(
+                maxN, Evaluation.TABU(tabuMoveSize)
+            ).optimize(
+                init, courseAdjacencyMatrix, studentCount, iterations
+            )
+        }
 
 
         fun tabu_hc(
@@ -313,10 +468,16 @@ enum class Optimize(val code: String /*val evaluation: Evaluation? = null,*/ /*v
             tabuLowLevelSize: Int = 5,
             tabuMoveSize: Int = 20,
             iterations: Int = Config.DEFAULT_ITERATIONS,
-        ): Pair<Schedule, Double>? = HighLevel.TABU(
-            maxN, tabuLowLevelSize, Evaluation.TABU(tabuMoveSize)
-        ).optimize(
-            init, courseAdjacencyMatrix, studentCount, iterations
-        )
+        ): Pair<Schedule, Double>? {
+            @Suppress(SuppressLiteral.NAME_SHADOWING)
+            val tabuMoveSize= if(tabuMoveSize > 0) tabuMoveSize
+            else (init.courseCount * Config.DEFAULT_TABU_MOVE_PERCENTAGE).toInt()
+
+            return HighLevel.TABU(
+                maxN, tabuLowLevelSize, Evaluation.TABU(tabuMoveSize)
+            ).optimize(
+                init, courseAdjacencyMatrix, studentCount, iterations
+            )
+        }
     }
 }

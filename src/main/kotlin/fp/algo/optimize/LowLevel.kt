@@ -2,6 +2,7 @@ package fp.algo.optimize
 
 import fp.model.CourseMove
 import fp.model.Schedule
+import sidev.lib.console.prine
 import sidev.lib.exception.IllegalArgExc
 import sidev.lib.progression.domain
 import sidev.lib.progression.range
@@ -51,7 +52,7 @@ sealed class LowLevel(val code: String) {
                 if(++u >= 7) break
                 try {
                     val fromTimeslotNo= range.random()
-                    val fromTimeslot= currentSchedule.getTimeslot(fromTimeslotNo)
+                    val fromTimeslot= currentSchedule.getTimeslotAssert(fromTimeslotNo)
                     var toTimeslotNo= fromTimeslotNo //range.random()
 
                     if(range.range > 0)
@@ -109,12 +110,12 @@ sealed class LowLevel(val code: String) {
                             toTimeslotNo= range.random()
                         }
 
-                        val fromTimeslot= currentSchedule.getTimeslot(fromTimeslotNo)
+                        val fromTimeslot= currentSchedule.getTimeslotAssert(fromTimeslotNo)
                         val fromCourseList= currentSchedule[fromTimeslot]!!
                         var movedCourseId= fromCourseList.random().id
                         val fromCourseListRemainSize= fromCourseList.size - u
                         while(moveList.any { it.id == movedCourseId }){
-                            if(fromCourseListRemainSize > 0)
+                            if(fromCourseListRemainSize <= 0)
                                 continue@while_
                             movedCourseId= fromCourseList.random().id
                         }
@@ -134,7 +135,7 @@ sealed class LowLevel(val code: String) {
                     }
                 }
             }
-            return if(moveList.isNotEmpty()) moveList.toTypedArray() else null
+            return if(moveList.size == n) moveList.toTypedArray() else null
         }
     }
 
@@ -146,9 +147,9 @@ sealed class LowLevel(val code: String) {
         ): Array<CourseMove>? {
             val range= 0 until currentSchedule.timeslotCount
             val fromTimeslotNo= range.random()
-            val fromTimeslot= currentSchedule.getTimeslot(fromTimeslotNo)
+            val fromTimeslot= currentSchedule.getTimeslotAssert(fromTimeslotNo)
             val toTimeslotNo= range.random()
-            val toTimeslot= currentSchedule.getTimeslot(toTimeslotNo)
+            val toTimeslot= currentSchedule.getTimeslotAssert(toTimeslotNo)
             val movedSrcCourseId= currentSchedule[fromTimeslot]!!.random().id
             val movedDestCourseId= currentSchedule[toTimeslot]!!.random().id
 
@@ -201,6 +202,7 @@ sealed class LowLevel(val code: String) {
                 var o= -1
                 while_@ while(loop){
                     if(++o >= 7) break
+                    //prine("SWAPn u= $u o= $o moveList.size= ${moveList.size}")
                     try {
                         var fromTimeslotNo: Int
                         if(u < lastIndex || prevMove == null){
@@ -218,7 +220,7 @@ sealed class LowLevel(val code: String) {
                             }
                         }
 
-                        val fromTimeslot= currentSchedule.getTimeslot(fromTimeslotNo)
+                        val fromTimeslot= currentSchedule.getTimeslotAssert(fromTimeslotNo)
                         val fromCourseList= currentSchedule[fromTimeslot]!!
 //                        val toTimeslot= currentSchedule.getTimeslot(fromTimeslotNo)
 
@@ -227,7 +229,7 @@ sealed class LowLevel(val code: String) {
 
                         val fromCourseListRemainSize= fromCourseList.size - u
                         while(moveList.any { it.id == movedCourseId }){
-                            if(fromCourseListRemainSize > 0)
+                            if(fromCourseListRemainSize <= 0)
                                 continue@while_
                             movedCourseId= fromCourseList.random().id
                         }
@@ -259,7 +261,7 @@ sealed class LowLevel(val code: String) {
                     }
                 }
             }
-            return if(moveList.isNotEmpty()) moveList.toTypedArray() else null
+            return if(moveList.size == n) moveList.toTypedArray() else null
         }
     }
 }
