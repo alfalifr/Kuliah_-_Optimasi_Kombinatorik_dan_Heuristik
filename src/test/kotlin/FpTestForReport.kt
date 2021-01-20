@@ -46,6 +46,7 @@ class FpTestForReport {
         ta()
     }
 
+    @ExperimentalTime
     @Test
     fun initSolution(){
         val adjMatContainer = mutableMapOf<String, Array<IntArray>>()
@@ -68,6 +69,19 @@ class FpTestForReport {
         Util.saveBestSchedulingRes(bestSchedulings)
         Util.saveAllResult(results)
         Util.saveFinalSol(bestSchedulings)
+
+        val initSchFileDir= Config.DATASET_DIR + "\\init_solution.csv"
+        val initSchFile= File(initSchFileDir)
+        FileUtil.saveln(initSchFile, "file_name\tpenalty\tduration\tconstruct", false)
+        for((tag, testRes) in bestSchedulings){
+            testRes?.also { (sch, durr) ->
+                val penalty= sch.penalty
+                val constr= tag.construct.code
+                val strLine= "${tag.fileName!!}\t$penalty\t${durr.inMicroseconds}\t$constr"
+                FileUtil.saveln(initSchFile, strLine, true)
+            }
+        }
+
     }
 
     @ExperimentalTime

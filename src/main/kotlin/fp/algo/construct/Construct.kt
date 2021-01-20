@@ -93,9 +93,28 @@ enum class Construct(val code: String, vararg val component: Component) {
     ;
 
     enum class Component(val code: String) {
-        DEGREE("D"), ENROLLMENT("E"), WEIGHTED_DEGREE("WD"),
-        COMMON_ENROLLMENT("CE"), WEIGHTED_COMMON_DEGREE("WCD"),
+        DEGREE("D"), ENROLLMENT("E"),
+
+        /**
+         * Degree * studentCount
+         */
+        WEIGHTED_DEGREE("WD"),
+
+        /**
+         * conflictingStudentCount
+         */
+        COMMON_ENROLLMENT("CE"),
+
+        /**
+         * Degree * conflictingStudentCount
+         */
+        WEIGHTED_COMMON_DEGREE("WCD"),
+
+        /**
+         * Degree * conflictingStudentCount * studentCount
+         */
         WEIGHTED_COMPLEX_DEGREE("WCxD"),
+
         SATURATION("S")
     }
 
