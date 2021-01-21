@@ -1232,6 +1232,7 @@ object Util {
         val penaltyFile= File("${Config.DATASET_DIR}\\penalty.csv")
         val timeslotFile= File("${Config.DATASET_DIR}\\timeslots.csv")
         val timeFile= File("${Config.DATASET_DIR}\\times.csv")
+        val feasibilityFile= File("${Config.DATASET_DIR}\\feasibility.csv")
         val itr= map.iterator()
 
         var (fileName, list) = itr.next()
@@ -1239,11 +1240,14 @@ object Util {
         var penaltyRowStr= "'$fileName';"
         var timeslotRowStr= "'$fileName';"
         var timeRowStr= "'$fileName';"
+        var feasibilityRowStr= "'$fileName';"
         list.forEach { (schedule, durr) ->
+            val timeslotCount= schedule.timeslotCount
             header += "'${schedule.tag.construct.code}';"
             penaltyRowStr += "'${schedule.penalty}';"
-            timeslotRowStr += "'${schedule.timeslotCount}';"
+            timeslotRowStr += "'$timeslotCount';"
             timeRowStr += "'$durr';"
+            feasibilityRowStr += "'${timeslotCount <= Config.maxTimeslot[Config.getFileNameIndex(fileName)]}';"
         }
 
         penaltyFile.delete() //.also { prine("penaltyFile.delete()= $it") }
@@ -1276,6 +1280,16 @@ object Util {
             timeRowStr, true
         )
 
+        feasibilityFile.delete() //.also { prine("timeslotFile.delete()= $it") }
+        FileUtil.saveln(
+            FileUtil.getAvailableFile(feasibilityFile),
+            header, false
+        )
+        FileUtil.saveln(
+            FileUtil.getAvailableFile(feasibilityFile),
+            feasibilityRowStr, true
+        )
+
         while(itr.hasNext()){
             val next = itr.next()
             fileName= next.key
@@ -1284,11 +1298,14 @@ object Util {
             penaltyRowStr= "'$fileName';"
             timeslotRowStr= "'$fileName';"
             timeRowStr= "'$fileName';"
+            feasibilityRowStr= "'$fileName';"
             list.forEach { (schedule, durr) ->
 //                val schedule= testRes.result
+                val timeslotCount= schedule.timeslotCount
                 penaltyRowStr += "'${schedule.penalty}';"
-                timeslotRowStr += "'${schedule.timeslotCount}';"
+                timeslotRowStr += "'$timeslotCount';"
                 timeRowStr += "'$durr';"
+                feasibilityRowStr += "'${timeslotCount <= Config.maxTimeslot[Config.getFileNameIndex(fileName)]}';"
             }
             if(
                 !FileUtil.saveln(
@@ -1302,6 +1319,10 @@ object Util {
                 !FileUtil.saveln(
                     FileUtil.getAvailableFile(timeFile),
                     timeRowStr, true
+                ) ||
+                !FileUtil.saveln(
+                    FileUtil.getAvailableFile(feasibilityFile),
+                    feasibilityRowStr, true
                 )
             ) return false
         }
